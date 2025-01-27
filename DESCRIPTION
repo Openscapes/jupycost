@@ -1,0 +1,15 @@
+Package: jupycost
+Title: Monitor costs and usage of AWS-hosted 2i2c JupyterHubs
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Andy", "Teucher", , "andy.teucher@gmail.com", role = c("aut", "cre"), 
+           comment = c(ORCID = "0000-0002-7840-692X")),
+    person("Openscapes LLC", role = "cph")
+  )
+Description: Functions to query the AWS Cost Explorer API and Prometheus to 
+    monitor resource usage and costs in AWS-hosted JupyterHubs administered by 2i2c
+    (<https://2i2c.org>).
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
