@@ -18,9 +18,13 @@ BugReports: https://github.com/Openscapes/jupycost/issues
 Depends:
     R (>= 4.1.0)
 Imports: 
+    cli,
     dplyr,
     glue,
     httr2,
     lubridate,
     purrr,
     rlang
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
