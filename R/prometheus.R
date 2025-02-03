@@ -221,11 +221,13 @@ create_range_df <- function(res, value_name) {
   metrics <- as.data.frame(res$data$result$metric)
   vals <- res$data$result$values
 
-  lapply(seq_along(vals), \(x) {
+  out_df <- lapply(seq_along(vals), \(x) {
     vals <- as.data.frame(vals[[x]])
     cbind(metrics[x, , drop = FALSE], vals, row.names = NULL)
   }) |>
-    purrr::list_rbind() |>
+    purrr::list_rbind()
+
+  out_df |>
     dplyr::rename(
       date = "V1",
       "{value_name}" := "V2"
