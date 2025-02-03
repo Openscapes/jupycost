@@ -38,7 +38,7 @@ get_daily_usage_costs <- function(
   )
 
   if (cost_type != "all") {
-    raw_daily <- dplyr::filter(raw_daily, id == cost_type)
+    raw_daily <- dplyr::filter(raw_daily, .data$id == cost_type)
   }
 
   raw_daily |>
