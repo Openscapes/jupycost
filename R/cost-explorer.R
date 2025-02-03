@@ -100,7 +100,11 @@ ce_categories <- function(df, n_categories = 10, cost_col) {
     top_services <- df |>
       dplyr::group_by(.data$service) |>
       dplyr::summarise(total_cost = sum({{ cost_col }})) |>
-      dplyr::slice_max(.data$total_cost, n = n_categories - 1) |>
+      dplyr::slice_max(
+        .data$total_cost,
+        n = n_categories - 1,
+        with_ties = FALSE
+      ) |>
       dplyr::pull(.data$service)
 
     df$service[!df$service %in% top_services] <- "Other"
