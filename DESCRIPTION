@@ -27,7 +27,7 @@ Imports:
     rlang,
     sixtyfour
 Remotes:
-    getwilds/sixtyfour
+    getwilds/sixtyfour#84
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
