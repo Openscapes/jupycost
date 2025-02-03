@@ -1,3 +1,14 @@
+#' Unsanitize directory names
+#'
+#' Where directory names have had special characters replaced through url-encoding,
+#' revert them back to their unescaped forms
+#'
+#' @param x A character vector of sanitized directory names.
+#'
+#' @returns
+#' A character vector with special characters restored from their sanitized form.
+#'
+#' @export
 unsanitize_dir_names <- function(x) {
   x <- gsub("-2d", "-", x)
   x <- gsub("-2e", ".", x)

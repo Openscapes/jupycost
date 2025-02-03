@@ -82,6 +82,19 @@ results_by_time_to_df <- function(x, keynames, metric) {
 
 # Aggregate services to maximum ten categories to simplify
 # visualization and align with AWS CE colour palette
+#' Aggregate cost explorer service categories for visualization
+#' and align with AWS CE colour palette
+#'
+#' @param df A data frame.
+#' @param n_categories Optional. A single integer indicating the maximum number of service categories.
+#' @param cost_col Column name containing cost values.
+#'
+#' @returns
+#' A grouped data frame summarizing costs by date range and service category.
+#' Services with lower total costs are grouped into an "Other" category if the
+#' number of unique services exceeds `n_categories`.
+#'
+#' @export
 ce_categories <- function(df, n_categories = 10, cost_col) {
   if (length(unique(df$service)) > n_categories) {
     top_services <- df |>
@@ -101,6 +114,14 @@ ce_categories <- function(df, n_categories = 10, cost_col) {
     )
 }
 
+#' AWS Cost Explorer palette
+#'
+#' @param n number of categories
+#'
+#' @returns
+#' A character vector of `n` distinct hex color codes.
+#'
+#' @export
 aws_ce_palette <- function(n) {
   pal <- c(
     "#6889e9",
