@@ -140,12 +140,16 @@ query_prometheus_instant <- function(
 #' @param prometheus_uid the uid of the prometheus datasource. By default, it
 #'    is discovered from the `grafana_url` using
 #'    the internal function `get_default_prometheus_uid()`
-#' @param query Query in "PromQL" ([Prometheus Query Language](https://prometheus.io/docs/prometheus/latest/querying/basics/))
+#' @param query Query in "PromQL"
+#'   ([Prometheus Query Language](https://prometheus.io/docs/prometheus/latest/querying/basics/))
 #' @param start_time Start of time range to query. Date or date-time object, or
-#'    character of the form "YYYY-MM-DD HH:MM:SS". Time  components are optional.
+#'    character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
+#'    Default is `end_time` - 30 days.
 #' @param end_time End of time range to query. Date or date-time object, or
-#'    character of the form "YYYY-MM-DD HH:MM:SS". Time  components are optional.
-#' @param step Time step in seconds
+#'    character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
+#'    Default is today (`Sys.Date()`)
+#' @param step Time step in seconds, or a string formatted as `"*h*m*s"` Eg., 1
+#'    day would be `"24h0m0s"`.
 #'
 #' @return List containing the response from Prometheus, in the
 #'    [range vector format](https://prometheus.io/docs/prometheus/latest/querying/api/#range-vectors)
@@ -163,8 +167,8 @@ query_prometheus_range <- function(
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
   prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token),
   query,
-  start_time,
-  end_time,
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
   step
 ) {
   req <- httr2::request(grafana_url) |>
@@ -185,8 +189,8 @@ query_prometheus_range <- function(
     httr2::req_auth_bearer_token(grafana_token) |>
     httr2::req_url_query(
       query = query,
-      start = format(as.POSIXct(start_time), "%Y-%m-%dT%H:%M:%SZ"),
-      end = format(as.POSIXct(end_time), "%Y-%m-%dT%H:%M:%SZ"),
+      start = format(as.POSIXct(start_time, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"),
+      end = format(as.POSIXct(end_time, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"),
       step = step
     )
 

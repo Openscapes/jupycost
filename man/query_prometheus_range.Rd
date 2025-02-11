@@ -9,8 +9,8 @@ query_prometheus_range(
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
   prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token),
   query,
-  start_time,
-  end_time,
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
   step
 )
 }
@@ -25,15 +25,19 @@ the environment variable \code{GRAFANA_TOKEN}}
 is discovered from the \code{grafana_url} using
 the internal function \code{get_default_prometheus_uid()}}
 
-\item{query}{Query in "PromQL" (\href{https://prometheus.io/docs/prometheus/latest/querying/basics/}{Prometheus Query Language})}
+\item{query}{Query in "PromQL"
+(\href{https://prometheus.io/docs/prometheus/latest/querying/basics/}{Prometheus Query Language})}
 
 \item{start_time}{Start of time range to query. Date or date-time object, or
-character of the form "YYYY-MM-DD HH:MM:SS". Time  components are optional.}
+character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
+Default is \code{end_time} - 30 days.}
 
 \item{end_time}{End of time range to query. Date or date-time object, or
-character of the form "YYYY-MM-DD HH:MM:SS". Time  components are optional.}
+character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
+Default is today (\code{Sys.Date()})}
 
-\item{step}{Time step in seconds}
+\item{step}{Time step in seconds, or a string formatted as \code{"*h*m*s"} Eg., 1
+day would be \code{"24h0m0s"}.}
 }
 \value{
 List containing the response from Prometheus, in the

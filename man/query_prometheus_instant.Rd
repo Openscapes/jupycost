@@ -22,7 +22,8 @@ the environment variable \code{GRAFANA_TOKEN}}
 is discovered from the \code{grafana_url} using
 the internal function \code{get_default_prometheus_uid()}}
 
-\item{query}{Query in "PromQL" (\href{https://prometheus.io/docs/prometheus/latest/querying/basics/}{Prometheus Query Language})}
+\item{query}{Query in "PromQL"
+(\href{https://prometheus.io/docs/prometheus/latest/querying/basics/}{Prometheus Query Language})}
 }
 \value{
 List containing the response from Prometheus, in the
