@@ -54,6 +54,6 @@ set_env_vars <- function(org = c("nasa", "nmfs"), env = parent.frame()) {
   TRUE
 }
 
-skip_cli <- function(x, ...) {
-  testthat::skip(cli::cli_fmt(cli::cli_text(x, ...)))
+skip_cli <- function(x, ..., env = parent.frame()) {
+  testthat::skip(cli::cli_fmt(cli::cli_text(x, ..., .envir = env)))
 }
