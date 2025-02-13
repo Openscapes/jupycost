@@ -6,7 +6,7 @@
 #'
 #' @returns A string containing the UID of the Prometheus datasource.
 #'
-#' @export
+#' @noRd
 get_default_prometheus_uid <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN")
