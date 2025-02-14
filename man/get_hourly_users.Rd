@@ -5,12 +5,20 @@
 \title{Get hourly user counts}
 \usage{
 get_hourly_users(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
   start_time = end_time - 30,
   end_time = Sys.Date(),
   step = "1h0m0s"
 )
 }
 \arguments{
+\item{grafana_url}{URL of the Grafana instance. Default
+\verb{""https://grafana.openscapes.2i2c.cloud""}}
+
+\item{grafana_token}{Authentication token for Grafana. By default reads from
+the environment variable \code{GRAFANA_TOKEN}}
+
 \item{start_time}{Start of time range to query. Date or date-time object, or
 character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
 Default is \code{end_time} - 30 days.}

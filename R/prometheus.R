@@ -46,9 +46,9 @@ get_default_prometheus_uid <- function(
 #' @export
 get_prometheus_labels <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
-  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token)
+  grafana_token = Sys.getenv("GRAFANA_TOKEN")
 ) {
+  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
   httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
@@ -69,9 +69,9 @@ get_prometheus_labels <- function(
 #' @export
 get_prometheus_metrics <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
-  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token)
+  grafana_token = Sys.getenv("GRAFANA_TOKEN")
 ) {
+  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
   resp <- httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
@@ -110,9 +110,9 @@ get_prometheus_metrics <- function(
 query_prometheus_instant <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token),
   query
 ) {
+  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
   httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
@@ -137,9 +137,6 @@ query_prometheus_instant <- function(
 #'    `""https://grafana.openscapes.2i2c.cloud""`
 #' @param grafana_token Authentication token for Grafana. By default reads from
 #'    the environment variable `GRAFANA_TOKEN`
-#' @param prometheus_uid the uid of the prometheus datasource. By default, it
-#'    is discovered from the `grafana_url` using
-#'    the internal function `get_default_prometheus_uid()`
 #' @param query Query in "PromQL"
 #'   ([Prometheus Query Language](https://prometheus.io/docs/prometheus/latest/querying/basics/))
 #' @param start_time Start of time range to query. Date or date-time object, or
@@ -165,12 +162,12 @@ query_prometheus_instant <- function(
 query_prometheus_range <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token),
   query,
   start_time = end_time - 30,
   end_time = Sys.Date(),
   step
 ) {
+  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
   req <- httr2::request(grafana_url) |>
     # Force HTTP version 2, I think there was a mismatch when not set and was
     # getting the error:

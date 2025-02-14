@@ -25,7 +25,8 @@ Imports:
     lubridate,
     purrr,
     rlang,
-    sixtyfour
+    sixtyfour,
+    tidyr
 Remotes:
     getwilds/sixtyfour
 Suggests: 

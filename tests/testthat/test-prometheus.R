@@ -23,6 +23,10 @@ test_that("get_prometheus_labels works", {
     .package = "httr2"
   )
 
+  local_mocked_bindings(
+    get_default_prometheus_uid = function(...) "foo"
+  )
+
   expect_equal(get_prometheus_labels(), mock_response)
 })
 
@@ -42,6 +46,10 @@ test_that("get_prometheus_metrics works", {
     resp_body_json = function(...) mock_response,
     resp_check_status = function(x) x,
     .package = "httr2"
+  )
+
+  local_mocked_bindings(
+    get_default_prometheus_uid = function(...) "foo"
   )
 
   result <- get_prometheus_metrics()
