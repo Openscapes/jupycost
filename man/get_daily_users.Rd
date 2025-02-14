@@ -5,13 +5,21 @@
 \title{Get daily users}
 \usage{
 get_daily_users(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
   start_time = end_time - 30,
   end_time = Sys.Date(),
   aggregation = 1,
-  step = aggregation * 24
+  step = 1
 )
 }
 \arguments{
+\item{grafana_url}{URL of the Grafana instance. Default
+\verb{""https://grafana.openscapes.2i2c.cloud""}}
+
+\item{grafana_token}{Authentication token for Grafana. By default reads from
+the environment variable \code{GRAFANA_TOKEN}}
+
 \item{start_time}{Start of time range to query. Date or date-time object, or
 character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
 Default is \code{end_time} - 30 days.}
@@ -23,8 +31,7 @@ Default is today (\code{Sys.Date()})}
 \item{aggregation}{time period over which to aggregate, in days (integer,
 default \code{1}).}
 
-\item{step}{Time step in seconds, or a string formatted as \code{"*h*m*s"}
-Default 1 day: \code{"24h0m0s"}.}
+\item{step}{Time step in days (default \code{1}).}
 }
 \value{
 A data frame with daily user counts, grouped by namespace.
