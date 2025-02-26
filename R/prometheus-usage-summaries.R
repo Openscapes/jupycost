@@ -78,5 +78,12 @@ get_hourly_users <- function(
     end_time = end_time,
     step = step
   )
-  create_range_df(res, "n_users")
+  create_range_df(res, "n_users") |>
+    dplyr::rename(date_time = date) |>
+    # Fill in zeros for missing dates
+    tidyr::complete(
+      date_time = tidyr::full_seq(.data$date_time, 1),
+      .data$namespace,
+      fill = list(n_users = 0)
+    )
 }
