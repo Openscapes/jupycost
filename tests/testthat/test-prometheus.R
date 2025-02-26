@@ -82,6 +82,7 @@ test_that("create_range_df works with provided data", {
 
 test_that("query_prometheus_range() works with nasa", {
   set_env_vars("nasa")
+  skip_if_env_vars_not_set()
 
   ret <- query_prometheus_range(
     query = "max(dirsize_total_size_bytes)",
@@ -94,6 +95,7 @@ test_that("query_prometheus_range() works with nasa", {
 
 test_that("query_prometheus_range() works with nmfs", {
   set_env_vars("nmfs")
+  skip_if_env_vars_not_set()
 
   ret <- query_prometheus_range(
     grafana_url = "https://grafana.nmfs-openscapes.2i2c.cloud",

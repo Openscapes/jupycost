@@ -1,5 +1,6 @@
 test_that("get_daily_users() works with nasa", {
   set_env_vars("nasa")
+  skip_if_env_vars_not_set()
   skip_if_offline()
 
   ret <- get_daily_users(start_time = "2025-01-01", end_time = "2025-01-10")
@@ -10,6 +11,7 @@ test_that("get_daily_users() works with nasa", {
 
 test_that("get_daily_users() works with nmfs", {
   set_env_vars("nmfs")
+  skip_if_env_vars_not_set()
   skip_if_offline()
 
   ret <- get_daily_users(
@@ -24,6 +26,7 @@ test_that("get_daily_users() works with nmfs", {
 
 test_that("get_hourly_users() works with nasa", {
   set_env_vars("nasa")
+  skip_if_env_vars_not_set()
   skip_if_offline()
 
   ret <- get_hourly_users(
@@ -38,6 +41,7 @@ test_that("get_hourly_users() works with nasa", {
 
 test_that("get_hourly_users() works with nmfs", {
   set_env_vars("nmfs")
+  skip_if_env_vars_not_set()
   skip_if_offline()
 
   ret <- get_hourly_users(
