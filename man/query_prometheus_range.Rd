@@ -7,7 +7,6 @@
 query_prometheus_range(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token),
   query,
   start_time = end_time - 30,
   end_time = Sys.Date(),
@@ -20,10 +19,6 @@ query_prometheus_range(
 
 \item{grafana_token}{Authentication token for Grafana. By default reads from
 the environment variable \code{GRAFANA_TOKEN}}
-
-\item{prometheus_uid}{the uid of the prometheus datasource. By default, it
-is discovered from the \code{grafana_url} using
-the internal function \code{get_default_prometheus_uid()}}
 
 \item{query}{Query in "PromQL"
 (\href{https://prometheus.io/docs/prometheus/latest/querying/basics/}{Prometheus Query Language})}

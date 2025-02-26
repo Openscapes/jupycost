@@ -12,7 +12,10 @@ test_that("unsanitize_dir_names reverses sanitization", {
 test_that("check_valid_date accepts valid date inputs", {
   expect_equal(check_valid_date(Sys.Date()), Sys.Date())
   expect_equal(check_valid_date("2024-01-01"), as.Date("2024-01-01"))
-  expect_equal(check_valid_date(as.POSIXct("2024-01-01")), as.Date("2024-01-01"))
+  expect_equal(
+    check_valid_date(as.POSIXct("2024-01-01")),
+    as.Date("2024-01-01")
+  )
 })
 
 test_that("check_valid_date errors informatively for invalid inputs", {

@@ -68,6 +68,7 @@ test_that("get_daily_usage_costs filters by cost_type correctly", {
 
 test_that("get_daily_usage_costs() works for real with nasa env vars", {
   set_env_vars("nasa")
+  skip_if_env_vars_not_set()
 
   ret <- get_daily_usage_costs(months_back = 1)
   expect_s3_class(ret, "data.frame")
@@ -80,6 +81,7 @@ test_that("get_daily_usage_costs() works for real with nasa env vars", {
 
 test_that("get_daily_usage_costs() works for real with nmfs env vars", {
   set_env_vars("nmfs")
+  skip_if_env_vars_not_set()
 
   ret <- get_daily_usage_costs(months_back = 1)
   expect_s3_class(ret, "data.frame")

@@ -6,8 +6,7 @@
 \usage{
 get_prometheus_metrics(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
-  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  prometheus_uid = get_default_prometheus_uid(grafana_url, grafana_token)
+  grafana_token = Sys.getenv("GRAFANA_TOKEN")
 )
 }
 \arguments{
@@ -16,10 +15,6 @@ get_prometheus_metrics(
 
 \item{grafana_token}{Authentication token for Grafana. By default reads from
 the environment variable \code{GRAFANA_TOKEN}}
-
-\item{prometheus_uid}{the uid of the prometheus datasource. By default, it
-is discovered from the \code{grafana_url} using
-the internal function \code{get_default_prometheus_uid()}}
 }
 \value{
 data.frame of metrics
