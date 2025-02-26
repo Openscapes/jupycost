@@ -27,6 +27,12 @@ jobs:
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      NASA_GRAFANA_TOKEN: ${{ secrets.NASA_GRAFANA_TOKEN }}
+      NASA_AWS_ACCESS_KEY_ID: ${{ secrets.NASA_AWS_ACCESS_KEY_ID }}
+      NASA_AWS_SECRET_ACCESS_KEY: ${{ secrets.NASA_AWS_SECRET_ACCESS_KEY }}
+      NMFS_GRAFANA_TOKEN: ${{ secrets.NMFS_GRAFANA_TOKEN }}
+      NMFS_AWS_ACCESS_KEY_ID: ${{ secrets.NMFS_AWS_ACCESS_KEY_ID }}
+      NMFS_AWS_SECRET_ACCESS_KEY: ${{ secrets.NMFS_AWS_SECRET_ACCESS_KEY }}
       R_KEEP_PKG_SOURCE: yes
 
     steps:
