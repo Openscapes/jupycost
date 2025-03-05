@@ -96,3 +96,7 @@ set_env_vars <- function(org = c("nasa", "nmfs"), env = parent.frame()) {
 
   stats::setNames(were_vars_set & !empty_vars, names(env_vars))
 }
+
+prom_date <- function(x) {
+  as.POSIXct(as.numeric(x), origin = "1970-01-01", tz = "UTC")
+}

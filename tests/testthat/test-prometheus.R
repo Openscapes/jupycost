@@ -57,7 +57,7 @@ test_that("get_prometheus_metrics works", {
   expect_equal(names(result), c("col1", "metric", "type", "help", "unit"))
 })
 
-test_that("create_range_df works with provided data", {
+test_that("format_prom_result works with provided data", {
   input <- list(
     data = list(
       result = list(
@@ -72,7 +72,7 @@ test_that("create_range_df works with provided data", {
     )
   )
 
-  result <- create_range_df(input, "test_value")
+  result <- format_prom_result(as.prom_range(input), "test_value")
 
   expect_equal(names(result), c("job", "date", "test_value"))
   expect_s3_class(result$date, "POSIXct")

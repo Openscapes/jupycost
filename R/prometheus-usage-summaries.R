@@ -39,7 +39,7 @@ get_daily_users <- function(
     step = glue::glue(step * 24, "h0m0s")
   )
 
-  create_range_df(res, "n_users") |>
+  format_prom_result(res, "n_users") |>
     dplyr::mutate(date = as.Date(date)) |>
     # Fill in zeros for missing dates
     tidyr::complete(
@@ -78,7 +78,7 @@ get_hourly_users <- function(
     end_time = end_time,
     step = step
   )
-  create_range_df(res, "n_users") |>
+  format_prom_result(res, "n_users") |>
     dplyr::rename(date_time = date) |>
     # Fill in zeros for missing dates
     tidyr::complete(
