@@ -14,7 +14,7 @@ test_that("get_default_prometheus_uid works", {
 })
 
 test_that("get_prometheus_labels works", {
-  mock_response <- c("label1", "label2")
+  mock_response <- list(data = c("label1", "label2"))
 
   local_mocked_bindings(
     req_perform = function(...) structure(list(), class = "httr2_response"),
@@ -27,7 +27,7 @@ test_that("get_prometheus_labels works", {
     get_default_prometheus_uid = function(...) "foo"
   )
 
-  expect_equal(get_prometheus_labels(), mock_response)
+  expect_equal(get_prometheus_labels(), mock_response$data)
 })
 
 test_that("get_prometheus_metrics works", {

@@ -49,7 +49,7 @@ get_prometheus_labels <- function(
   grafana_token = Sys.getenv("GRAFANA_TOKEN")
 ) {
   prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
-  httr2::request(grafana_url) |>
+  resp <- httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
       prometheus_uid,
@@ -59,6 +59,8 @@ get_prometheus_labels <- function(
     httr2::req_perform() |>
     httr2::resp_check_status() |>
     httr2::resp_body_json(simplifyVector = TRUE, simplifyDataFrame = TRUE)
+
+  resp$data
 }
 
 #' Get a data.frame of metrics available from Prometheus
