@@ -95,8 +95,7 @@ get_hourly_users <- function(
 #' @inheritParams query_prometheus_instant
 #'
 #' @returns
-#' A data frame of directory information. Will error if the API token is not set
-#' or if the API request fails.
+#' A data frame of directory information.
 #'
 #' @export
 user_dir_info <- function(
@@ -120,14 +119,29 @@ user_dir_info <- function(
     grafana_token = grafana_token,
     query = "max(dirsize_total_size_bytes) by (namespace, directory)",
     time = time
-  )
-
-  size <- size |>
+  ) |>
     format_prom_result(
       value_name = "dirsize_mb",
       value_fn = \(x) as.numeric(x) * 1e-6
     )
 
+  n_files <- query_prometheus_instant(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = "max(dirsize_entries_count) by (namespace, directory)",
+    time = time
+  ) |>
+    format_prom_result(
+      value_name = "n_files"
+    )
+
+  join_cols <- c("namespace", "directory", "date")
+
   last_accessed |>
-    dplyr::left_join(size, by = c("namespace", "directory", "date"))
+    dplyr::left_join(size, by = join_cols) |>
+    dplyr::left_join(n_files, by = join_cols) |>
+    dplyr::mutate(
+      percent_space_by_hub = .data$dirsize_mb / sum(.data$dirsize_mb) * 100,
+      .by = "namespace"
+    )
 }
