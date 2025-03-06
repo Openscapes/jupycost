@@ -87,3 +87,47 @@ get_hourly_users <- function(
       fill = list(n_users = 0)
     )
 }
+
+#' Get user directory information
+#'
+#' @param grafana_url Optional. A single string specifying the Grafana URL.
+#' @param grafana_token Optional. A single string containing the Grafana API token.
+#' @inheritParams query_prometheus_instant
+#'
+#' @returns
+#' A data frame of directory information. Will error if the API token is not set
+#' or if the API request fails.
+#'
+#' @export
+user_dir_info <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  time = Sys.time()
+) {
+  last_accessed <- query_prometheus_instant(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = "min(dirsize_latest_mtime) by (namespace, directory)",
+    time = time
+  ) |>
+    format_prom_result(
+      value_name = "last_accessed",
+      value_fn = prom_date
+    )
+
+  size <- query_prometheus_instant(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = "max(dirsize_total_size_bytes) by (namespace, directory)",
+    time = time
+  )
+
+  size <- size |>
+    format_prom_result(
+      value_name = "dirsize_mb",
+      value_fn = \(x) as.numeric(x) * 1e-6
+    )
+
+  last_accessed |>
+    dplyr::left_join(size, by = c("namespace", "directory", "date"))
+}
