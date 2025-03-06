@@ -7,7 +7,8 @@
 query_prometheus_instant(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  query
+  query,
+  time = Sys.time()
 )
 }
 \arguments{
@@ -19,6 +20,11 @@ the environment variable \code{GRAFANA_TOKEN}}
 
 \item{query}{Query in "PromQL"
 (\href{https://prometheus.io/docs/prometheus/latest/querying/basics/}{Prometheus Query Language})}
+
+\item{time}{Date or date-time object, or character of the form
+"YYYY-MM-DD HH:MM:SS". Time components are optional. Default is current
+time (\code{Sys.time()}). If a \code{POSIXt} object, it will be converted
+to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 }
 \value{
 List containing the response from Prometheus, in the

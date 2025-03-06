@@ -2,7 +2,7 @@
 % Please edit documentation in R/prometheus-usage-summaries.R
 \name{get_daily_users}
 \alias{get_daily_users}
-\title{Get daily users}
+\title{Get daily user counts}
 \usage{
 get_daily_users(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
@@ -22,11 +22,13 @@ the environment variable \code{GRAFANA_TOKEN}}
 
 \item{start_time}{Start of time range to query. Date or date-time object, or
 character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-Default is \code{end_time} - 30 days.}
+Default is \code{end_time} - 30 days. If a \code{POSIXt} object, it will be converted
+to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 
 \item{end_time}{End of time range to query. Date or date-time object, or
 character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-Default is today (\code{Sys.Date()})}
+Default is today (\code{Sys.Date()}). If a \code{POSIXt} object, it will be converted
+to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 
 \item{aggregation}{time period over which to aggregate, in days (integer,
 default \code{1}).}
@@ -37,5 +39,5 @@ default \code{1}).}
 A data frame with daily user counts, grouped by namespace.
 }
 \description{
-Get daily users
+Get daily user counts
 }

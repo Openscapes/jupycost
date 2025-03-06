@@ -29,3 +29,26 @@ test_that("check_valid_date errors informatively for invalid inputs", {
 test_that("check_valid_date includes argument name in error", {
   expect_snapshot(check_valid_date("not a date", arg = "my_date"), error = TRUE)
 })
+
+test_that("time_string formats dates correctly for prometheus", {
+  test_datetime <- as.POSIXct("2024-01-01 12:34:56", tz = "UTC")
+  test_date <- as.Date("2024-01-01")
+  test_posixlt <- as.POSIXlt("2024-01-01 12:34:56", tz = "UTC")
+
+  expect_equal(time_string(test_datetime), "2024-01-01T12:34:56Z")
+  expect_equal(time_string(test_date), "2024-01-01T00:00:00Z")
+  expect_equal(time_string(test_posixlt), "2024-01-01T12:34:56Z")
+  expect_equal(time_string("2024-01-01 12:34:56"), "2024-01-01T12:34:56Z")
+})
+
+test_that("time_string handles timezone conversion correctly", {
+  est_time <- as.POSIXct("2024-01-01 07:00:00", tz = "America/New_York")
+  expect_equal(time_string(est_time), "2024-01-01T12:00:00Z")
+})
+
+test_that("time_string errors on invalid inputs", {
+  expect_snapshot(error = TRUE, time_string("not a date"))
+  expect_snapshot(error = TRUE, time_string(NULL))
+  expect_snapshot(error = TRUE, time_string(NA))
+  expect_snapshot(error = TRUE, time_string(42))
+})

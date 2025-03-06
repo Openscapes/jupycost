@@ -1,9 +1,9 @@
-#' Get daily users
+#' Get daily user counts
 #'
 #' @inheritParams query_prometheus_range
-#' @param step Time step in days (default `1`).
 #' @param aggregation time period over which to aggregate, in days (integer,
 #'   default `1`).
+#' @param step Time step in days (default `1`).
 #' @inheritParams query_prometheus_range
 #'
 #' @returns

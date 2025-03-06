@@ -99,6 +99,10 @@ get_prometheus_metrics <- function(
 #' Query Prometheus for an instant in time
 #'
 #' @inheritParams query_prometheus_range
+#' @param time Date or date-time object, or character of the form
+#'    "YYYY-MM-DD HH:MM:SS". Time components are optional. Default is current
+#'    time (`Sys.time()`). If a `POSIXt` object, it will be converted
+#'    to UTC, if a `Date` or `character` object, it will be assumed to be `UTC`
 #'
 #' @return List containing the response from Prometheus, in the
 #'    [instant vector format](https://prometheus.io/docs/prometheus/latest/querying/api/#instant-vectors)
@@ -112,7 +116,8 @@ get_prometheus_metrics <- function(
 query_prometheus_instant <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  query
+  query,
+  time = Sys.time()
 ) {
   prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
   resp <- httr2::request(grafana_url) |>
@@ -123,9 +128,7 @@ query_prometheus_instant <- function(
     ) |>
     httr2::req_options(http_version = 2) |>
     httr2::req_auth_bearer_token(grafana_token) |>
-    httr2::req_url_query(
-      query = query
-    ) |>
+    httr2::req_url_query(query = query, time = time_string(time)) |>
     httr2::req_perform() |>
     httr2::resp_check_status()
 
@@ -146,10 +149,12 @@ query_prometheus_instant <- function(
 #'   ([Prometheus Query Language](https://prometheus.io/docs/prometheus/latest/querying/basics/))
 #' @param start_time Start of time range to query. Date or date-time object, or
 #'    character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-#'    Default is `end_time` - 30 days.
+#'    Default is `end_time` - 30 days. If a `POSIXt` object, it will be converted
+#'    to UTC, if a `Date` or `character` object, it will be assumed to be `UTC`
 #' @param end_time End of time range to query. Date or date-time object, or
 #'    character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-#'    Default is today (`Sys.Date()`)
+#'    Default is today (`Sys.Date()`). If a `POSIXt` object, it will be converted
+#'    to UTC, if a `Date` or `character` object, it will be assumed to be `UTC`
 #' @param step Time step in seconds, or a string formatted as `"*h*m*s"` Eg., 1
 #'    day would be `"24h0m0s"`.
 #'
@@ -191,8 +196,8 @@ query_prometheus_range <- function(
     httr2::req_auth_bearer_token(grafana_token) |>
     httr2::req_url_query(
       query = query,
-      start = format(as.POSIXct(start_time, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"),
-      end = format(as.POSIXct(end_time, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"),
+      start = time_string(start_time),
+      end = time_string(end_time),
       step = step
     )
 
@@ -270,15 +275,17 @@ format_prom_result.prom_instant <- function(
 }
 
 format_prom_df <- function(x, value_name, value_fn = base::as.numeric) {
-  x |>
+  x <- x |>
     dplyr::rename(
       date = "V1",
       "{value_name}" := "V2"
-    ) |>
-    dplyr::mutate(
-      date = prom_date(date),
-      "{value_name}" := value_fn(.data[[value_name]])
     )
+
+  dplyr::mutate(
+    x,
+    date = prom_date(date),
+    "{value_name}" := value_fn(.data[[value_name]])
+  )
 }
 
 as.prom_range <- function(x) {
