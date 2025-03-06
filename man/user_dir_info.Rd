@@ -21,8 +21,7 @@ time (\code{Sys.time()}). If a \code{POSIXt} object, it will be converted
 to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 }
 \value{
-A data frame of directory information. Will error if the API token is not set
-or if the API request fails.
+A data frame of directory information.
 }
 \description{
 Get user directory information
