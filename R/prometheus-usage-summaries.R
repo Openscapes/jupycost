@@ -147,7 +147,17 @@ user_dir_info <- function(
     dplyr::left_join(size, by = join_cols) |>
     dplyr::left_join(n_files, by = join_cols) |>
     dplyr::mutate(
-      percent_space_by_hub = .data$dirsize_mb / sum(.data$dirsize_mb) * 100,
+      directory = unsanitize_dir_names(directory),
+      percent_total_size = .data$dirsize_mb / sum(.data$dirsize_mb) * 100,
       .by = "namespace"
+    ) |>
+    dplyr::select(
+      "date",
+      "namespace",
+      "directory",
+      "last_accessed",
+      "n_files",
+      "dirsize_mb",
+      "percent_total_size"
     )
 }
