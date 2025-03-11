@@ -95,7 +95,13 @@ get_hourly_users <- function(
 #' @inheritParams query_prometheus_instant
 #'
 #' @returns
-#' A data frame of directory information.
+#' A data frame of directory information:
+#' - `namespace`: Hub Namespace (prod, staging, workshop)
+#' - `directory`: User directory
+#' - `last_accessed`: Date of last access
+#' - `dirsize_mb`: Size of directory in MB
+#' - `n_files`: Number of files
+#' - `percent_total_size`: Percentage of total directory size
 #'
 #' @export
 user_dir_info <- function(
