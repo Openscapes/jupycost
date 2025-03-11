@@ -53,3 +53,49 @@ test_that("get_hourly_users() works with nmfs", {
   expect_s3_class(ret, "data.frame")
   expect_named(ret, c("date_time", "namespace", "n_users"))
 })
+
+test_that("user_dir_info() works with nasa", {
+  set_env_vars("nasa")
+  skip_if_env_vars_not_set()
+  skip_if_offline()
+
+  ret <- user_dir_info()
+
+  expect_s3_class(ret, "data.frame")
+  expect_named(
+    ret,
+    c(
+      "date",
+      "namespace",
+      "directory",
+      "last_accessed",
+      "n_files",
+      "dirsize_mb",
+      "percent_total_size"
+    )
+  )
+})
+
+test_that("user_dir_info() works with nmfs", {
+  set_env_vars("nmfs")
+  skip_if_env_vars_not_set()
+  skip_if_offline()
+
+  ret <- user_dir_info(
+    grafana_url = "https://grafana.nmfs-openscapes.2i2c.cloud"
+  )
+
+  expect_s3_class(ret, "data.frame")
+  expect_named(
+    ret,
+    c(
+      "date",
+      "namespace",
+      "directory",
+      "last_accessed",
+      "n_files",
+      "dirsize_mb",
+      "percent_total_size"
+    )
+  )
+})
