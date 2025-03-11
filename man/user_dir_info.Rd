@@ -21,7 +21,15 @@ time (\code{Sys.time()}). If a \code{POSIXt} object, it will be converted
 to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 }
 \value{
-A data frame of directory information.
+A data frame of directory information:
+\itemize{
+\item \code{namespace}: Hub Namespace (prod, staging, workshop)
+\item \code{directory}: User directory
+\item \code{last_accessed}: Date of last access
+\item \code{dirsize_mb}: Size of directory in MB
+\item \code{n_files}: Number of files
+\item \code{percent_total_size}: Percentage of total directory size
+}
 }
 \description{
 Get user directory information
