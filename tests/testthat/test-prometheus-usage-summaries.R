@@ -54,12 +54,12 @@ test_that("get_hourly_users() works with nmfs", {
   expect_named(ret, c("date_time", "namespace", "n_users"))
 })
 
-test_that("user_dir_info() works with nasa", {
+test_that("user_dir_snapshot() works with nasa", {
   set_env_vars("nasa")
   skip_if_env_vars_not_set()
   skip_if_offline()
 
-  ret <- user_dir_info()
+  ret <- user_dir_snapshot()
 
   expect_s3_class(ret, "data.frame")
   expect_named(
@@ -76,12 +76,12 @@ test_that("user_dir_info() works with nasa", {
   )
 })
 
-test_that("user_dir_info() works with nmfs", {
+test_that("user_dir_snapshot() works with nmfs", {
   set_env_vars("nmfs")
   skip_if_env_vars_not_set()
   skip_if_offline()
 
-  ret <- user_dir_info(
+  ret <- user_dir_snapshot(
     grafana_url = "https://grafana.nmfs-openscapes.2i2c.cloud"
   )
 
@@ -98,4 +98,70 @@ test_that("user_dir_info() works with nmfs", {
       "percent_total_size"
     )
   )
+})
+
+test_that("user_dir_snapshot works with mocked responses", {
+  mock_date_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(namespace = "test", directory = "user-2ddir"),
+        value = list(c("1704067200", "123.45"))
+      )
+    )
+  )
+
+  mock_size_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(namespace = "test", directory = "user-2ddir"),
+        value = list(c("1704067200", "1000000"))
+      )
+    )
+  )
+
+  mock_files_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(namespace = "test", directory = "user-2ddir"),
+        value = list(c("1704067200", "100"))
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) {
+      parent <- parent.frame()
+      if (grepl("mtime", parent$query)) return(mock_date_response)
+      if (grepl("size_bytes", parent$query)) return(mock_size_response)
+      if (grepl("entries_count", parent$query)) return(mock_files_response)
+    },
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+
+  local_mocked_bindings(
+    get_default_prometheus_uid = function(...) "foo"
+  )
+
+  result <- user_dir_snapshot(time = as.POSIXct("2024-01-01"))
+
+  expect_s3_class(result, "data.frame")
+  expect_named(
+    result,
+    c(
+      "date",
+      "namespace",
+      "directory",
+      "last_accessed",
+      "n_files",
+      "dirsize_mb",
+      "percent_total_size"
+    )
+  )
+  expect_equal(result$namespace, "test")
+  expect_equal(result$directory, "user-dir")
+  expect_equal(result$n_files, 100)
+  expect_equal(result$dirsize_mb, 1)
+  expect_equal(result$percent_total_size, 100)
 })
