@@ -165,3 +165,106 @@ test_that("user_dir_snapshot works with mocked responses", {
   expect_equal(result$dirsize_mb, 1)
   expect_equal(result$percent_total_size, 100)
 })
+
+test_that("dir_sizes() works with nasa", {
+  set_env_vars("nasa")
+  skip_if_env_vars_not_set()
+  skip_if_offline()
+
+  ret <- dir_sizes(start_time = "2025-01-01", end_time = "2025-01-10")
+
+  expect_s3_class(ret, "data.frame")
+  expect_named(ret, c("namespace", "date", "dirsize_mb"))
+})
+
+test_that("dir_sizes() works with nmfs", {
+  set_env_vars("nmfs")
+  skip_if_env_vars_not_set()
+  skip_if_offline()
+
+  ret <- dir_sizes(
+    grafana_url = "https://grafana.nmfs-openscapes.2i2c.cloud",
+    start_time = "2025-01-01",
+    end_time = "2025-01-10"
+  )
+
+  expect_s3_class(ret, "data.frame")
+  expect_named(ret, c("namespace", "date", "dirsize_mb"))
+})
+
+test_that("dir_sizes() works with by_user = TRUE", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(namespace = "test", directory = "user-2ddir"),
+        values = list(
+          data.frame(
+            V1 = 1704067200,
+            V2 = "1000000"
+          )
+        )
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+
+  local_mocked_bindings(
+    get_default_prometheus_uid = function(...) "foo"
+  )
+
+  result <- dir_sizes(
+    by_user = TRUE,
+    start_time = as.POSIXct("2024-01-01"),
+    end_time = as.POSIXct("2024-01-01")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(result, c("namespace", "directory", "date", "dirsize_mb"))
+  expect_equal(result$namespace, "test")
+  expect_equal(result$directory, "user-dir")
+  expect_equal(result$dirsize_mb, 1)
+})
+
+test_that("dir_sizes() works with by_user = FALSE", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(namespace = "test"),
+        values = list(
+          data.frame(
+            V1 = 1704067200,
+            V2 = "1000000"
+          )
+        )
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+
+  local_mocked_bindings(
+    get_default_prometheus_uid = function(...) "foo"
+  )
+
+  result <- dir_sizes(
+    by_user = FALSE,
+    start_time = as.POSIXct("2024-01-01"),
+    end_time = as.POSIXct("2024-01-01")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(result, c("namespace", "date", "dirsize_mb"))
+  expect_equal(result$namespace, "test")
+  expect_equal(result$dirsize_mb, 1)
+})
