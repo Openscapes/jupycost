@@ -161,3 +161,49 @@ user_dir_info <- function(
       "percent_total_size"
     )
 }
+
+#' Query directory sizes over time from Grafana
+#'
+#' @param by_user A logical value indicating whether to group by user (directory). Defau
+#' @inheritParams query_prometheus_range
+#'
+#' @returns
+#' A data frame of directory sizes over time, with dirctory sizes in megabytes.
+#'
+#' @export
+dir_sizes <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  start_time = end_time - 30,
+  by_user = FALSE,
+  end_time = Sys.Date(),
+  step = "1h0m0s"
+) {
+  if (by_user) {
+    query <- 'max(dirsize_total_size_bytes) by (namespace, directory)'
+  } else {
+    query <- 'max(dirsize_total_size_bytes) by (namespace)'
+  }
+
+  ret <- query_prometheus_range(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = query,
+    start_time = start_time,
+    end_time = end_time,
+    step = step
+  ) |>
+    format_prom_result(
+      value_name = "dirsize_mb",
+      value_fn = \(x) as.numeric(x) * 1e-6
+    )
+
+  if (by_user) {
+    ret <- ret |>
+      dplyr::mutate(
+        directory = unsanitize_dir_names(directory)
+      )
+  }
+
+  ret
+}
