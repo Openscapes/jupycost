@@ -104,7 +104,7 @@ get_hourly_users <- function(
 #' - `percent_total_size`: Percentage of total directory size
 #'
 #' @export
-user_dir_info <- function(
+user_dir_snapshot <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
   time = Sys.time()
