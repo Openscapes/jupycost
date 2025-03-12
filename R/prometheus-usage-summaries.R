@@ -147,7 +147,7 @@ user_dir_snapshot <- function(
     dplyr::left_join(size, by = join_cols) |>
     dplyr::left_join(n_files, by = join_cols) |>
     dplyr::mutate(
-      directory = unsanitize_dir_names(directory),
+      directory = unsanitize_dir_names(.data$directory),
       percent_total_size = .data$dirsize_mb / sum(.data$dirsize_mb) * 100,
       .by = "namespace"
     ) |>
@@ -201,7 +201,7 @@ dir_sizes <- function(
   if (by_user) {
     ret <- ret |>
       dplyr::mutate(
-        directory = unsanitize_dir_names(directory)
+        directory = unsanitize_dir_names(.data$directory)
       )
   }
 
