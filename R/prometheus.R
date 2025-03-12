@@ -258,7 +258,7 @@ format_prom_result.prom_range <- function(
     purrr::list_rbind()
 
   out_df |>
-    format_prom_df(value_name = value_name)
+    format_prom_df(value_name = value_name, value_fn = value_fn)
 }
 
 #' @export
