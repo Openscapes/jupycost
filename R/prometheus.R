@@ -239,7 +239,7 @@ format_prom_result.default <- function(
   value_name,
   value_fn = base::as.numeric
 ) {
-  stop("Unsupported type for format_prom_result")
+  cli::cli_abort("Unsupported type for {.fun format_prom_result}")
 }
 
 #' @export
@@ -275,6 +275,14 @@ format_prom_result.prom_instant <- function(
 }
 
 format_prom_df <- function(x, value_name, value_fn = base::as.numeric) {
+  if (!"V1" %in% names(x)) {
+    cli::cli_abort("Missing date column")
+  }
+
+  if (!"V2" %in% names(x)) {
+    cli::cli_abort("Missing value column")
+  }
+
   x <- x |>
     dplyr::rename(
       date = "V1",
