@@ -156,7 +156,7 @@ query_prometheus_instant <- function(
 #'    Default is today (`Sys.Date()`). If a `POSIXt` object, it will be converted
 #'    to UTC, if a `Date` or `character` object, it will be assumed to be `UTC`
 #' @param step Time step in seconds, or a string formatted as `"*h*m*s"` Eg., 1
-#'    day would be `"24h0m0s"`.
+#'    day would be `"24h0m0s"`. Default is 1 hour ()
 #'
 #' @return List containing the response from Prometheus, in the
 #'    [range vector format](https://prometheus.io/docs/prometheus/latest/querying/api/#range-vectors)
@@ -175,7 +175,7 @@ query_prometheus_range <- function(
   query,
   start_time = end_time - 30,
   end_time = Sys.Date(),
-  step
+  step = "1h0m0s"
 ) {
   prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
   req <- httr2::request(grafana_url) |>
