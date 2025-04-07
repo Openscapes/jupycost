@@ -52,8 +52,6 @@ get_daily_users <- function(
 #' Get hourly user counts
 #'
 #' @inheritParams query_prometheus_range
-#' @param step Time step in seconds, or a string formatted as `"*h*m*s"`
-#'   Eg., Default 1 hour: `"1h0m0s"`.
 #'
 #' @returns
 #' A dataframe of hourly user counts, grouped by namespace.
@@ -90,8 +88,6 @@ get_hourly_users <- function(
 
 #' Get user directory information
 #'
-#' @param grafana_url Optional. A single string specifying the Grafana URL.
-#' @param grafana_token Optional. A single string containing the Grafana API token.
 #' @inheritParams query_prometheus_instant
 #'
 #' @returns
@@ -175,14 +171,20 @@ dir_sizes <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
   start_time = end_time - 30,
-  by_user = FALSE,
   end_time = Sys.Date(),
+  by_user = FALSE,
   step = "1h0m0s"
 ) {
+  # dirsize_total_size_bytes is a metric calculated at the root user directory
+  # level (it doesn't calculate for subdirectories;
+  # https://github.com/yuvipanda/prometheus-dirsize-exporter/tree/main?tab=readme-ov-file#metrics-recorded),
+  # so if grouping by directory or select a single user, sum() will be equal to
+  # max(). But if not grouping by directory, if we want the total size of all
+  # user directories, we need to sum().
   if (by_user) {
     query <- 'max(dirsize_total_size_bytes) by (namespace, directory)'
   } else {
-    query <- 'max(dirsize_total_size_bytes) by (namespace)'
+    query <- 'sum(dirsize_total_size_bytes) by (namespace)'
   }
 
   ret <- query_prometheus_range(
