@@ -209,3 +209,186 @@ dir_sizes <- function(
 
   ret
 }
+
+
+#' Query user memory requests from Grafana
+#'
+#' @description
+#' Query user memory requests from Grafana. This gives the  memory requests
+#' by a user, in addition to the instance type and container image they are using,
+#' by specified time step for a given time range.
+#'
+#' @inheritParams query_prometheus_range
+#'
+#' @returns
+#' User memory request data.
+#'
+#' @export
+user_mem_requests <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
+  step = "0h10m0s"
+) {
+  ret <- query_prometheus_range(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = resource_requests_query("memory"),
+    start_time = start_time,
+    end_time = end_time,
+    step = step
+  ) |>
+    format_prom_result(
+      value_name = "mem_mb",
+      value_fn = \(x) as.numeric(x) * 1e-6
+    )
+
+  ret
+}
+
+#' Query user CPU requests from Grafana
+#'
+#' @description
+#' Query user cpu requests from Grafana. This gives the cpu requests
+#' by a user, in addition to the instance type and container image they are using,
+#' by specified time step for a given time range.
+#'
+#' @inheritParams query_prometheus_range
+#'
+#' @returns
+#' User cpu request data.
+#'
+#' @export
+user_cpu_requests <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
+  step = "0h10m0s"
+) {
+  ret <- query_prometheus_range(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = resource_requests_query("cpu"),
+    start_time = start_time,
+    end_time = end_time,
+    step = step
+  ) |>
+    format_prom_result(
+      value_name = "cpu_cores",
+      value_fn = \(x) as.numeric(x)
+    )
+
+  ret
+}
+
+resource_requests_query <- function(resource) {
+  glue::glue(
+    'sum(
+  kube_pod_container_resource_requests{resource="<resource>", pod=~"jupyter-.*"}
+  * on(node) group_left(label_beta_kubernetes_io_instance_type)
+  kube_node_labels
+) by (namespace, pod, label_beta_kubernetes_io_instance_type, node)
+* on(namespace, pod) group_left(image_id)
+kube_pod_container_info{namespace="prod", pod=~"jupyter-.*"}',
+    .open = "<",
+    .close = ">"
+  )
+}
+
+# Resource allocation is set here:
+# https://github.com/2i2c-org/infrastructure/blob/bf1225f89162e525f58caa537b6181c27d9c941e/config/clusters/openscapes/common.values.yaml#L106-L172.
+# AFAICT the mem_limit and mem_guarantee essentially dictate how many pods can fit in a node. cpu_limit is the upper cpu resources a user will get,
+# depending on how many pods are running on a node, and how cpu intensive the workloads are.
+# If you choose a Resource Allocation that has the highest memory for the CPU, then you will get a node to yourself...
+
+user_mem_usage <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
+  step = "0h10m0s"
+) {
+  ret <- query_prometheus_range(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = 'sum(
+  # exclude name="" because the same container can be reported
+  # with both no name and `name=k8s_...`,
+  # in which case sum() by (pod) reports double the actual metric
+  container_memory_working_set_bytes{name!="", instance=~".*"}
+  * on (namespace, pod) group_left(container)
+  group(
+      kube_pod_labels{label_app="jupyterhub", label_component="singleuser-server", namespace=~".*", pod=~".*"}
+  ) by (pod, namespace)
+) by (pod, namespace)',
+    start_time = start_time,
+    end_time = end_time,
+    step = step
+  )
+
+  res <- ret |>
+    format_prom_result(
+      value_name = "mem_mb",
+      value_fn = \(x) as.numeric(x) * 1e-6
+    )
+
+  res
+}
+
+user_cpu_usage <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
+  step = "0h10m0s"
+) {
+  ret <- query_prometheus_range(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = 'sum(
+  # exclude name="" because the same container can be reported
+  # with both no name and `name=k8s_...`,
+  # in which case sum() by (pod) reports double the actual metric
+  irate(container_cpu_usage_seconds_total{name!="", instance=~".*"}[5m])
+  * on (namespace, pod) group_left(container)
+  group(
+      kube_pod_labels{label_app="jupyterhub", label_component="singleuser-server", namespace=~".*", pod=~".*"}
+  ) by (pod, namespace)
+) by (pod, namespace)',
+    start_time = start_time,
+    end_time = end_time,
+    step = step
+  )
+
+  res <- ret |>
+    format_prom_result(
+      value_name = "cpu_percent",
+      value_fn = \(x) as.numeric(x) * 1e-6
+    )
+
+  res
+}
+
+resource_usage_query <- function(resource) {
+  sum_line <- switch(
+    resource,
+    "cpu" = 'irate(container_cpu_usage_seconds_total{name!="", instance=~".*", pod!="jupyter-deployment-service-check",pod=~"jupyter-.*"}[5m])',
+    "memory" = 'container_memory_working_set_bytes{name!="", instance=~".*", pod!="jupyter-deployment-service-check",pod=~"jupyter-.*"}' # "container_memory_usage_bytes" includes cache which may be misleading
+  )
+
+  paste0(
+    'sum(
+  # exclude name="" because the same container can be reported
+  # with both no name and `name=k8s_...`,
+  # in which case sum() by (pod) reports double the actual metric
+  # TODO: Not irate for memory!',
+    sum_line,
+    '* on (namespace, pod) group_left(annotation_hub_jupyter_org_username)
+  group(
+      kube_pod_annotations{namespace=~".*", annotation_hub_jupyter_org_username=~".*"}
+  ) by (pod, namespace, annotation_hub_jupyter_org_username)
+) by (annotation_hub_jupyter_org_username, namespace)'
+  )
+}
