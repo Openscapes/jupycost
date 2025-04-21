@@ -10,7 +10,7 @@ query_prometheus_range(
   query,
   start_time = end_time - 30,
   end_time = Sys.Date(),
-  step
+  step = "1h0m0s"
 )
 }
 \arguments{
@@ -34,7 +34,7 @@ Default is today (\code{Sys.Date()}). If a \code{POSIXt} object, it will be conv
 to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 
 \item{step}{Time step in seconds, or a string formatted as \code{"*h*m*s"} Eg., 1
-day would be \code{"24h0m0s"}.}
+day would be \code{"24h0m0s"}. Default is 1 hour ()}
 }
 \value{
 List containing the response from Prometheus, in the

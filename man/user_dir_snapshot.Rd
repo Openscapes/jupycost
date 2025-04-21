@@ -11,9 +11,11 @@ user_dir_snapshot(
 )
 }
 \arguments{
-\item{grafana_url}{Optional. A single string specifying the Grafana URL.}
+\item{grafana_url}{URL of the Grafana instance. Default
+\verb{""https://grafana.openscapes.2i2c.cloud""}}
 
-\item{grafana_token}{Optional. A single string containing the Grafana API token.}
+\item{grafana_token}{Authentication token for Grafana. By default reads from
+the environment variable \code{GRAFANA_TOKEN}}
 
 \item{time}{Date or date-time object, or character of the form
 "YYYY-MM-DD HH:MM:SS". Time components are optional. Default is current

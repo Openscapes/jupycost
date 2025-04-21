@@ -303,6 +303,19 @@ kube_pod_container_info{namespace="prod", pod=~"jupyter-.*"}',
 # depending on how many pods are running on a node, and how cpu intensive the workloads are.
 # If you choose a Resource Allocation that has the highest memory for the CPU, then you will get a node to yourself...
 
+#' Query user memory usage from Grafana
+#'
+#' @description
+#' Query user memory usage from Grafana. This gives the actual memory usage (in MB)
+#' by a user, in addition to the user pod and hub namespace,
+#' by specified time step for a given time range.
+#'
+#' @inheritParams query_prometheus_range
+#'
+#' @returns
+#' A data frame containing pod memory usage.
+#'
+#' @export
 user_mem_usage <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
@@ -337,6 +350,19 @@ user_mem_usage <- function(
   res
 }
 
+#' Query user CPU usage from Grafana
+#'
+#' @description
+#' Query user cpu usage from Grafana. This gives the actual cpu usage (in percentage)
+#' by a user, in addition to the user pod and hub namespace,
+#' by specified time step for a given time range.
+#'
+#' @inheritParams query_prometheus_range
+#'
+#' @returns
+#' A data frame containing user CPU usage.
+#'
+#' @export
 user_cpu_usage <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
@@ -370,6 +396,7 @@ user_cpu_usage <- function(
 
   res
 }
+
 
 resource_usage_query <- function(resource) {
   sum_line <- switch(

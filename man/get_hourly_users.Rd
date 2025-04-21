@@ -29,8 +29,8 @@ character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
 Default is today (\code{Sys.Date()}). If a \code{POSIXt} object, it will be converted
 to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 
-\item{step}{Time step in seconds, or a string formatted as \code{"*h*m*s"}
-Eg., Default 1 hour: \code{"1h0m0s"}.}
+\item{step}{Time step in seconds, or a string formatted as \code{"*h*m*s"} Eg., 1
+day would be \code{"24h0m0s"}. Default is 1 hour ()}
 }
 \value{
 A dataframe of hourly user counts, grouped by namespace.
