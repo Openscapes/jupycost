@@ -12,11 +12,14 @@ get_daily_usage_costs <- function(
   end_date = Sys.Date(),
   months_back = 6,
   cost_type = c("unblended", "blended", "all"),
-  hub = c("all", "prod", "staging", "workshop")
+  hub = c("all", "prod", "staging", "workshop", "shared"),
+  cluster = c("openscapes", "nmfs-openscapes")
 ) {
   end_date <- check_valid_date(end_date)
 
   hub <- match.arg(hub)
+
+  cluster = match.arg(cluster)
 
   if (!rlang::is_integerish(months_back) || months_back > 12) {
     cli::cli_abort("{.arg months_back} must be an integer <= 12.")
@@ -30,16 +33,19 @@ get_daily_usage_costs <- function(
   )
 
   filter_list <- list(
-    Dimensions = list(
-      Key = "RECORD_TYPE",
-      Values = list("Usage")
+    And = list(
+      Dimensions = list(
+        Key = "RECORD_TYPE",
+        Values = list("Usage")
+      ),
+      ce_filter_attributable_costs(cluster)
     )
   )
 
   if (hub == "shared") {
     filter_list = list(
       And = list(
-        filter_list,
+        filter_list[["And"]],
         list(
           Tags = list(
             Key = "2i2c:hub-name",
@@ -51,7 +57,7 @@ get_daily_usage_costs <- function(
   } else if (hub != "all") {
     filter_list = list(
       And = list(
-        filter_list,
+        filter_list[["And"]],
         list(
           Tags = list(
             Key = "2i2c:hub-name",
@@ -73,6 +79,10 @@ get_daily_usage_costs <- function(
     raw_daily <- dplyr::filter(raw_daily, .data$id == cost_type)
   }
 
-  raw_daily |>
+  daily_ce <- raw_daily |>
     dplyr::mutate(date = lubridate::ymd(.data$date))
+
+  daily_ce$service_component <- ce_service_map()[daily_ce$service]
+  daily_ce$service_component[is.na(daily_ce$service_component)] <- "other"
+  daily_ce
 }
