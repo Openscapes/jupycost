@@ -3,6 +3,8 @@
 #' @param end_date A Date object representing the end of the desired date range.
 #' @param months_back Optional. A single integer specifying how many months back to query.
 #' @param cost_type The type of costs. "unblended" (default), "blended", or "all"
+#' @param hub which hub (or "all") you want costs for
+#' @param cluster which cluster ("openscapes" or "nmfs-openscapes") you want information for
 #'
 #' @returns
 #' A data frame of AWS usage costs.

@@ -7,7 +7,9 @@
 get_daily_usage_costs(
   end_date = Sys.Date(),
   months_back = 6,
-  cost_type = c("unblended", "blended", "all")
+  cost_type = c("unblended", "blended", "all"),
+  hub = c("all", "prod", "staging", "workshop", "shared"),
+  cluster = c("openscapes", "nmfs-openscapes")
 )
 }
 \arguments{
@@ -16,6 +18,10 @@ get_daily_usage_costs(
 \item{months_back}{Optional. A single integer specifying how many months back to query.}
 
 \item{cost_type}{The type of costs. "unblended" (default), "blended", or "all"}
+
+\item{hub}{which hub (or "all") you want costs for}
+
+\item{cluster}{which cluster ("openscapes" or "nmfs-openscapes") you want information for}
 }
 \value{
 A data frame of AWS usage costs.
