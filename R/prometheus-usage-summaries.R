@@ -291,7 +291,7 @@ resource_requests_query <- function(resource) {
   kube_node_labels
 ) by (namespace, pod, label_beta_kubernetes_io_instance_type, node)
 * on(namespace, pod) group_left(image_id)
-kube_pod_container_info{namespace="prod", pod=~"jupyter-.*"}',
+kube_pod_container_info{namespace=~".*", pod=~"jupyter-.*"}',
     .open = "<",
     .close = ">"
   )
