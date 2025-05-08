@@ -36,9 +36,11 @@ get_daily_usage_costs <- function(
 
   filter_list <- list(
     And = list(
-      Dimensions = list(
-        Key = "RECORD_TYPE",
-        Values = list("Usage")
+      list(
+        Dimensions = list(
+          Key = "RECORD_TYPE",
+          Values = list("Usage")
+        )
       ),
       ce_filter_attributable_costs(cluster)
     )
@@ -47,7 +49,7 @@ get_daily_usage_costs <- function(
   if (hub == "shared") {
     filter_list = list(
       And = list(
-        filter_list[["And"]],
+        filter_list[["And"]][[1]],
         list(
           Tags = list(
             Key = "2i2c:hub-name",
@@ -59,7 +61,7 @@ get_daily_usage_costs <- function(
   } else if (hub != "all") {
     filter_list = list(
       And = list(
-        filter_list[["And"]],
+        filter_list[["And"]][[1]],
         list(
           Tags = list(
             Key = "2i2c:hub-name",
