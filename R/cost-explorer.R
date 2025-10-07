@@ -158,7 +158,7 @@ ce_service_map <- function() {
 }
 
 ce_filter_attributable_costs <- function(
-  cluster = c("openscapes", "nmfs-openscapes")
+  cluster = c("openscapeshub", "nmfs-openscapes")
 ) {
   list(
     # ref: https://github.com/2i2c-org/infrastructure/issues/4787#issue-2519110356
