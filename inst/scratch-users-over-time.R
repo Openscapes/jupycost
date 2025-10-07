@@ -13,12 +13,14 @@ dir_sizes <- query_prometheus_range(
   end_time = end_date,
   step = 60 * 60 * 24
 ) |>
-  create_range_df(value_name = "size") |>
+  format_prom_result(value_name = "size") |>
   mutate(
     directory = unsanitize_dir_names(directory),
     size = size * 1e-9
   ) |>
-  filter(!directory %in% c(".ipynb_checkpoints", "_shared")) |>
+  filter(
+    !directory %in% c(".ipynb_checkpoints", "_shared")
+  ) |>
   filter(namespace != "staging")
 
 n_users_over_time <- dir_sizes |>
@@ -44,4 +46,17 @@ ever <- dir_sizes |>
 ggplot(n_users_over_time, aes(x = date, y = n_users)) +
   geom_line()
 
-daily_users <- get_daily_users(start_time = start_date, end_time = end_date)
+daily_users <- get_daily_users(
+  start_time = start_date,
+  end_time = end_date
+)
+
+user_mem_requests(
+  start_time = as.POSIXct("2025-01-01 00:00:00"),
+  end_time = as.POSIXct("2025-01-10 00:00:00"),
+)
+
+user_cpu_requests(
+  start_time = as.POSIXct("2025-01-01 00:00:00"),
+  end_time = as.POSIXct("2025-01-10 00:00:00")
+)
