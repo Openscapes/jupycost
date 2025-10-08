@@ -30,13 +30,13 @@ character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
 Default is today (\code{Sys.Date()}). If a \code{POSIXt} object, it will be converted
 to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 
-\item{by_user}{A logical value indicating whether to group by user (directory). Defau}
+\item{by_user}{A logical value indicating whether to group by user (directory). Default FALSE}
 
 \item{step}{Time step in seconds, or a string formatted as \code{"*h*m*s"} Eg., 1
 day would be \code{"24h0m0s"}. Default is 1 hour ()}
 }
 \value{
-A data frame of directory sizes over time, with dirctory sizes in megabytes.
+A data frame of directory sizes over time, with directory sizes in megabytes.
 }
 \description{
 Query directory sizes over time from Grafana

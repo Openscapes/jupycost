@@ -21,7 +21,7 @@ get_daily_usage_costs <- function(
 
   hub <- match.arg(hub)
 
-  cluster = match.arg(cluster)
+  cluster <- match.arg(cluster)
 
   if (!rlang::is_integerish(months_back) || months_back > 12) {
     cli::cli_abort("{.arg months_back} must be an integer <= 12.")
@@ -49,7 +49,7 @@ get_daily_usage_costs <- function(
   )
 
   if (hub == "support") {
-    filter_list = list(
+    filter_list <- list(
       And = list(
         filter_list[["And"]][[1]],
         list(
@@ -61,7 +61,7 @@ get_daily_usage_costs <- function(
       )
     )
   } else if (hub != "all") {
-    filter_list = list(
+    filter_list <- list(
       And = list(
         filter_list[["And"]][[1]],
         list(

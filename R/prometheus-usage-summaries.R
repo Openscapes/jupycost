@@ -160,11 +160,11 @@ user_dir_snapshot <- function(
 
 #' Query directory sizes over time from Grafana
 #'
-#' @param by_user A logical value indicating whether to group by user (directory). Defau
+#' @param by_user A logical value indicating whether to group by user (directory). Default FALSE
 #' @inheritParams query_prometheus_range
 #'
 #' @returns
-#' A data frame of directory sizes over time, with dirctory sizes in megabytes.
+#' A data frame of directory sizes over time, with directory sizes in megabytes.
 #'
 #' @export
 dir_sizes <- function(
