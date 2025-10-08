@@ -4,7 +4,7 @@
 #' @param months_back Optional. A single integer specifying how many months back to query.
 #' @param cost_type The type of costs. "unblended" (default), "blended", or "all"
 #' @param hub which hub (or "all") you want costs for
-#' @param cluster which cluster ("openscapeshub" or "nmfs-openscapes") you want information for
+#' @param cluster which cluster ("openscapeshub" or "nmfs-openscapes") you want information for. Ensure that you are authenticated to the correct AWS account using the appropriate API keys.
 #'
 #' @returns
 #' A data frame of AWS usage costs.
@@ -14,7 +14,7 @@ get_daily_usage_costs <- function(
   end_date = Sys.Date(),
   months_back = 6,
   cost_type = c("unblended", "blended", "all"),
-  hub = c("all", "prod", "staging", "workshop", "shared"),
+  hub = c("all", "prod", "staging", "workshop", "support"),
   cluster = c("openscapeshub", "nmfs-openscapes")
 ) {
   end_date <- check_valid_date(end_date)
@@ -42,11 +42,13 @@ get_daily_usage_costs <- function(
           Values = list("Usage")
         )
       ),
+      # TODO: figure out why attributable costs aren't being filtered for shared and individual hubs (only for all)
+      # https://github.com/2i2c-org/jupyterhub-cost-monitoring/blob/main/src/jupyterhub_cost_monitoring/query_usage.py
       ce_filter_attributable_costs(cluster)
     )
   )
 
-  if (hub == "shared") {
+  if (hub == "support") {
     filter_list = list(
       And = list(
         filter_list[["And"]][[1]],

@@ -208,3 +208,29 @@ ce_filter_attributable_costs <- function(
     )
   )
 }
+
+#' Get the names of the hubs from AWS Cost Explorer
+#'
+#' @param start_date A date or date-like object that can be coerced to a string.
+#' @param end_date A date or date-like object that can be coerced to a string.
+#'
+#' @returns
+#' A character vector of hub names, with missing or empty values replaced by `"support"`.
+#'
+#' @export
+query_hub_names <- function(start_date, end_date) {
+  aws_ce_client <- sixtyfour::con_ce()
+  # ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ce/client/get_tags.html
+  response <- aws_ce_client$get_tags(
+    TimePeriod = list(
+      Start = as.character(start_date),
+      End = as.character(end_date)
+    ),
+    TagKey = "2i2c:hub-name"
+  )
+
+  hub_names <- response$Tags
+  hub_names[is.na(hub_names) | hub_names == ""] <- "support"
+
+  hub_names
+}
