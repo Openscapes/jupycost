@@ -1,4 +1,4 @@
-# jupycost (development version)
+# jupycost 0.1.0
 
 ## New Features
 
