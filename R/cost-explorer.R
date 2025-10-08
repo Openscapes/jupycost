@@ -118,6 +118,7 @@ ce_categories <- function(df, n_categories = 10, cost_col) {
     )
 }
 
+
 #' AWS Cost Explorer palette
 #'
 #' @param n number of categories
@@ -141,4 +142,95 @@ aws_ce_palette <- function(n) {
   )
 
   rev(pal[seq(1, n)])
+}
+
+ce_service_map <- function() {
+  c(
+    "AWS Backup" = "backup",
+    "EC2 - Other" = "compute",
+    "Amazon Elastic Compute Cloud - Compute" = "compute",
+    "Amazon Elastic Container Service for Kubernetes" = "fixed",
+    "Amazon Elastic File System" = "home storage",
+    "Amazon Elastic Load Balancing" = "networking",
+    "Amazon Simple Storage Service" = "object storage",
+    "Amazon Virtual Private Cloud" = "networking"
+  )
+}
+
+ce_filter_attributable_costs <- function(
+  cluster = c("openscapeshub", "nmfs-openscapes")
+) {
+  list(
+    # ref: https://github.com/2i2c-org/infrastructure/issues/4787#issue-2519110356
+    # https://github.com/2i2c-org/infrastructure/blob/4c8fa0c264c592a50db2109a3cb9e7e540784af2/helm-charts/aws-ce-grafana-backend/mounted-files/const.py#L52
+    Or = list(
+      list(
+        Tags = list(
+          Key = "alpha.eksctl.io/cluster-name",
+          Values = list(cluster),
+          MatchOptions = list("EQUALS")
+        )
+      ),
+      list(
+        Tags = list(
+          Key = paste0("kubernetes.io/cluster/", cluster),
+          Values = list("owned"),
+          MatchOptions = list("EQUALS")
+        )
+      ),
+      list(
+        Tags = list(
+          Key = "2i2c.org/cluster-name",
+          Values = list(cluster),
+          MatchOptions = list("EQUALS")
+        )
+      ),
+      # FIXME: The inclusion of tags 2i2c:hub-name and 2i2c:node-purpose below
+      #        in this filter is a patch to capture openscapes data from 1st
+      #        July and up to 24th September 2024, and can be removed once
+      #        that date range is considered irrelevant.
+      list(
+        Not = list(
+          Tags = list(
+            Key = "2i2c:hub-name",
+            MatchOptions = list("ABSENT")
+          )
+        )
+      ),
+      list(
+        Not = list(
+          Tags = list(
+            Key = "2i2c:node-purpose",
+            MatchOptions = list("ABSENT")
+          )
+        )
+      )
+    )
+  )
+}
+
+#' Get the names of the hubs from AWS Cost Explorer
+#'
+#' @param start_date A date or date-like object that can be coerced to a string.
+#' @param end_date A date or date-like object that can be coerced to a string.
+#'
+#' @returns
+#' A character vector of hub names, with missing or empty values replaced by `"support"`.
+#'
+#' @export
+query_hub_names <- function(start_date, end_date) {
+  aws_ce_client <- sixtyfour::con_ce()
+  # ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ce/client/get_tags.html
+  response <- aws_ce_client$get_tags(
+    TimePeriod = list(
+      Start = as.character(start_date),
+      End = as.character(end_date)
+    ),
+    TagKey = "2i2c:hub-name"
+  )
+
+  hub_names <- response$Tags
+  hub_names[is.na(hub_names) | hub_names == ""] <- "support"
+
+  hub_names
 }

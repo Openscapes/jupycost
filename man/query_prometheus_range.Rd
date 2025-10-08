@@ -10,7 +10,7 @@ query_prometheus_range(
   query,
   start_time = end_time - 30,
   end_time = Sys.Date(),
-  step
+  step = "1h0m0s"
 )
 }
 \arguments{
@@ -25,14 +25,16 @@ the environment variable \code{GRAFANA_TOKEN}}
 
 \item{start_time}{Start of time range to query. Date or date-time object, or
 character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-Default is \code{end_time} - 30 days.}
+Default is \code{end_time} - 30 days. If a \code{POSIXt} object, it will be converted
+to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 
 \item{end_time}{End of time range to query. Date or date-time object, or
 character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-Default is today (\code{Sys.Date()})}
+Default is today (\code{Sys.Date()}). If a \code{POSIXt} object, it will be converted
+to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \code{UTC}}
 
 \item{step}{Time step in seconds, or a string formatted as \code{"*h*m*s"} Eg., 1
-day would be \code{"24h0m0s"}.}
+day would be \code{"24h0m0s"}. Default is 1 hour ()}
 }
 \value{
 List containing the response from Prometheus, in the
@@ -42,7 +44,7 @@ List containing the response from Prometheus, in the
 Adapted from https://hackmd.io/NllqOUfaTLCXcDQPipr4rg
 }
 \examples{
-\dontshow{if (FALSE) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (FALSE) withAutoprint(\{ # examplesIf}
 query_prometheus_range(
   query = "max(dirsize_total_size_bytes) by (directory, namespace)",
   start_time = "2024-01-01",

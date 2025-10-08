@@ -49,7 +49,7 @@ get_prometheus_labels <- function(
   grafana_token = Sys.getenv("GRAFANA_TOKEN")
 ) {
   prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
-  httr2::request(grafana_url) |>
+  resp <- httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
       prometheus_uid,
@@ -59,6 +59,8 @@ get_prometheus_labels <- function(
     httr2::req_perform() |>
     httr2::resp_check_status() |>
     httr2::resp_body_json(simplifyVector = TRUE, simplifyDataFrame = TRUE)
+
+  resp$data
 }
 
 #' Get a data.frame of metrics available from Prometheus
@@ -97,6 +99,10 @@ get_prometheus_metrics <- function(
 #' Query Prometheus for an instant in time
 #'
 #' @inheritParams query_prometheus_range
+#' @param time Date or date-time object, or character of the form
+#'    "YYYY-MM-DD HH:MM:SS". Time components are optional. Default is current
+#'    time (`Sys.time()`). If a `POSIXt` object, it will be converted
+#'    to UTC, if a `Date` or `character` object, it will be assumed to be `UTC`
 #'
 #' @return List containing the response from Prometheus, in the
 #'    [instant vector format](https://prometheus.io/docs/prometheus/latest/querying/api/#instant-vectors)
@@ -110,10 +116,11 @@ get_prometheus_metrics <- function(
 query_prometheus_instant <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN"),
-  query
+  query,
+  time = Sys.time()
 ) {
   prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
-  httr2::request(grafana_url) |>
+  resp <- httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
       prometheus_uid,
@@ -121,12 +128,13 @@ query_prometheus_instant <- function(
     ) |>
     httr2::req_options(http_version = 2) |>
     httr2::req_auth_bearer_token(grafana_token) |>
-    httr2::req_url_query(
-      query = query
-    ) |>
+    httr2::req_url_query(query = query, time = time_string(time)) |>
     httr2::req_perform() |>
-    httr2::resp_check_status() |>
-    httr2::resp_body_json(simplifyVector = TRUE)
+    httr2::resp_check_status()
+
+  ret <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+
+  as.prom_instant(ret)
 }
 
 #' Query prometheus for a range of dates
@@ -141,12 +149,14 @@ query_prometheus_instant <- function(
 #'   ([Prometheus Query Language](https://prometheus.io/docs/prometheus/latest/querying/basics/))
 #' @param start_time Start of time range to query. Date or date-time object, or
 #'    character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-#'    Default is `end_time` - 30 days.
+#'    Default is `end_time` - 30 days. If a `POSIXt` object, it will be converted
+#'    to UTC, if a `Date` or `character` object, it will be assumed to be `UTC`
 #' @param end_time End of time range to query. Date or date-time object, or
 #'    character of the form "YYYY-MM-DD HH:MM:SS". Time components are optional.
-#'    Default is today (`Sys.Date()`)
+#'    Default is today (`Sys.Date()`). If a `POSIXt` object, it will be converted
+#'    to UTC, if a `Date` or `character` object, it will be assumed to be `UTC`
 #' @param step Time step in seconds, or a string formatted as `"*h*m*s"` Eg., 1
-#'    day would be `"24h0m0s"`.
+#'    day would be `"24h0m0s"`. Default is 1 hour ()
 #'
 #' @return List containing the response from Prometheus, in the
 #'    [range vector format](https://prometheus.io/docs/prometheus/latest/querying/api/#range-vectors)
@@ -165,7 +175,7 @@ query_prometheus_range <- function(
   query,
   start_time = end_time - 30,
   end_time = Sys.Date(),
-  step
+  step = "1h0m0s"
 ) {
   prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
   req <- httr2::request(grafana_url) |>
@@ -186,8 +196,8 @@ query_prometheus_range <- function(
     httr2::req_auth_bearer_token(grafana_token) |>
     httr2::req_url_query(
       query = query,
-      start = format(as.POSIXct(start_time, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"),
-      end = format(as.POSIXct(end_time, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ"),
+      start = time_string(start_time),
+      end = time_string(end_time),
       step = step
     )
 
@@ -195,14 +205,15 @@ query_prometheus_range <- function(
     httr2::req_perform() |>
     httr2::resp_check_status()
 
-  resp |>
-    httr2::resp_body_json(simplifyVector = TRUE, simplifyDataFrame = TRUE)
+  ret <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  as.prom_range(ret)
 }
 
 #' Create a data frame from a prometheus range query result
 #'
-#' @param res A list containing data results; the result of running `query_prometheus_range()`
+#' @param x A `prom_result` object; the result of running [query_prometheus_range()] or [query_prometheus_instant()]
 #' @param value_name A single string specifying the name for the value column.
+#' @param value_fn A function to transform the value. Default [as.numeric()]
 #'
 #' @returns
 #' A data frame with columns for metrics, a UTC datetime column named 'date',
@@ -216,11 +227,29 @@ query_prometheus_range <- function(
 #'   end_time = "2024-05-28",
 #'   step = 60 * 60 * 24
 #' )
-#' create_range_df(range_res, "size (bytes)")
+#' format_prom_result(range_res, "size (bytes)")
 #' @export
-create_range_df <- function(res, value_name) {
-  metrics <- as.data.frame(res$data$result$metric)
-  vals <- res$data$result$values
+format_prom_result <- function(x, value_name, value_fn = base::as.numeric) {
+  UseMethod("format_prom_result")
+}
+
+#' @export
+format_prom_result.default <- function(
+  x,
+  value_name,
+  value_fn = base::as.numeric
+) {
+  cli::cli_abort("Unsupported type for {.fun format_prom_result}")
+}
+
+#' @export
+format_prom_result.prom_range <- function(
+  x,
+  value_name,
+  value_fn = base::as.numeric
+) {
+  metrics <- as.data.frame(x$data$result$metric)
+  vals <- x$data$result$values
 
   out_df <- lapply(seq_along(vals), \(x) {
     vals <- as.data.frame(vals[[x]])
@@ -229,12 +258,48 @@ create_range_df <- function(res, value_name) {
     purrr::list_rbind()
 
   out_df |>
+    format_prom_df(value_name = value_name, value_fn = value_fn)
+}
+
+#' @export
+format_prom_result.prom_instant <- function(
+  x,
+  value_name,
+  value_fn = base::as.numeric
+) {
+  metrics <- as.data.frame(x$data$result$metric)
+  vals <- as.data.frame(do.call(rbind, x$data$result$value))
+
+  cbind(metrics, vals) |>
+    format_prom_df(value_name = value_name, value_fn = value_fn)
+}
+
+format_prom_df <- function(x, value_name, value_fn = base::as.numeric) {
+  if (!"V1" %in% names(x)) {
+    cli::cli_abort("Missing date column")
+  }
+
+  if (!"V2" %in% names(x)) {
+    cli::cli_abort("Missing value column")
+  }
+
+  x <- x |>
     dplyr::rename(
       date = "V1",
       "{value_name}" := "V2"
-    ) |>
-    dplyr::mutate(
-      date = as.POSIXct(as.numeric(date), origin = "1970-01-01", tz = "UTC"),
-      "{value_name}" := as.numeric(.data[[value_name]])
     )
+
+  dplyr::mutate(
+    x,
+    date = prom_date(date),
+    "{value_name}" := value_fn(.data[[value_name]])
+  )
+}
+
+as.prom_range <- function(x) {
+  structure(x, class = c("prom_range", "prom_result"))
+}
+
+as.prom_instant <- function(x) {
+  structure(x, class = c("prom_instant", "prom_result"))
 }

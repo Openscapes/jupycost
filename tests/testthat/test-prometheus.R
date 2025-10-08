@@ -14,7 +14,7 @@ test_that("get_default_prometheus_uid works", {
 })
 
 test_that("get_prometheus_labels works", {
-  mock_response <- c("label1", "label2")
+  mock_response <- list(data = c("label1", "label2"))
 
   local_mocked_bindings(
     req_perform = function(...) structure(list(), class = "httr2_response"),
@@ -27,7 +27,7 @@ test_that("get_prometheus_labels works", {
     get_default_prometheus_uid = function(...) "foo"
   )
 
-  expect_equal(get_prometheus_labels(), mock_response)
+  expect_equal(get_prometheus_labels(), mock_response$data)
 })
 
 test_that("get_prometheus_metrics works", {
@@ -57,7 +57,7 @@ test_that("get_prometheus_metrics works", {
   expect_equal(names(result), c("col1", "metric", "type", "help", "unit"))
 })
 
-test_that("create_range_df works with provided data", {
+test_that("format_prom_result works with provided data", {
   input <- list(
     data = list(
       result = list(
@@ -72,7 +72,7 @@ test_that("create_range_df works with provided data", {
     )
   )
 
-  result <- create_range_df(input, "test_value")
+  result <- format_prom_result(as.prom_range(input), "test_value")
 
   expect_equal(names(result), c("job", "date", "test_value"))
   expect_s3_class(result$date, "POSIXct")

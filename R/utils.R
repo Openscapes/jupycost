@@ -96,3 +96,39 @@ set_env_vars <- function(org = c("nasa", "nmfs"), env = parent.frame()) {
 
   stats::setNames(were_vars_set & !empty_vars, names(env_vars))
 }
+
+
+#' Convert Prometheus numeric date to POSIXct
+#'
+#' @param x A numeric vector of unix timestamps.
+#'
+#' @returns
+#' A POSIXct vector in UTC timezone.
+#'
+#' @noRd
+prom_date <- function(x) {
+  as.POSIXct(as.numeric(x), origin = "1970-01-01", tz = "UTC")
+}
+
+#' Format time as string in the format that prometheus expects
+#'
+#' @param x A Date, POSIXt time object or character string in UTC
+#'
+#' @returns
+#' A string in ISO 8601 format with UTC timezone (e.g. "2024-01-01T12:00:00Z").
+#'
+#' @noRd
+time_string <- function(
+  x,
+  arg = rlang::caller_arg(x),
+  call = rlang::caller_env()
+) {
+  if (!inherits(x, c("POSIXt", "character", "Date")) || length(x) != 1) {
+    cli::cli_abort(
+      "{.arg {arg}} must be a length 1 Date or POSIXt object, or character in a standard unambiguous date format",
+      arg = arg,
+      call = call
+    )
+  }
+  format(as.POSIXct(x, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
+}
