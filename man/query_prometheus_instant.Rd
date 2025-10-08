@@ -34,7 +34,7 @@ List containing the response from Prometheus, in the
 Query Prometheus for an instant in time
 }
 \examples{
-\dontshow{if (FALSE) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (FALSE) withAutoprint(\{ # examplesIf}
 current_size <- query_prometheus_instant(
   query = "max(dirsize_total_size_bytes) by (directory, namespace)"
 )

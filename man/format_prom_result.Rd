@@ -21,7 +21,7 @@ and a numeric value column named according to \code{value_name}.
 Create a data frame from a prometheus range query result
 }
 \examples{
-\dontshow{if (FALSE) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (FALSE) withAutoprint(\{ # examplesIf}
 
 range_res <- query_prometheus_range(
   query = "max(dirsize_total_size_bytes) by (directory, namespace)",

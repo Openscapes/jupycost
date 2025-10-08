@@ -44,7 +44,7 @@ List containing the response from Prometheus, in the
 Adapted from https://hackmd.io/NllqOUfaTLCXcDQPipr4rg
 }
 \examples{
-\dontshow{if (FALSE) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (FALSE) withAutoprint(\{ # examplesIf}
 query_prometheus_range(
   query = "max(dirsize_total_size_bytes) by (directory, namespace)",
   start_time = "2024-01-01",
