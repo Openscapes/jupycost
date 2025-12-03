@@ -132,3 +132,32 @@ time_string <- function(
   }
   format(as.POSIXct(x, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
 }
+
+#' Parse Prometheus step format to seconds
+#'
+#' @param step Numeric (seconds) or character string like "1h0m0s"
+#' @returns Numeric seconds
+#' @noRd
+parse_step_to_seconds <- function(step) {
+  if (is.numeric(step)) {
+    return(step)
+  }
+
+  hours <- if (grepl("h", step)) {
+    as.numeric(sub("([0-9]+)h.*", "\\1", step))
+  } else {
+    0
+  }
+  minutes <- if (grepl("m", step)) {
+    as.numeric(sub(".*?([0-9]+)m.*", "\\1", step))
+  } else {
+    0
+  }
+  seconds <- if (grepl("s", step)) {
+    as.numeric(sub(".*?([0-9]+)s.*", "\\1", step))
+  } else {
+    0
+  }
+
+  hours * 3600 + minutes * 60 + seconds
+}

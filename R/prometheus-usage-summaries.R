@@ -80,7 +80,7 @@ get_hourly_users <- function(
     dplyr::rename(date_time = date) |>
     # Fill in zeros for missing dates
     tidyr::complete(
-      date_time = tidyr::full_seq(.data$date_time, 1),
+      date_time = tidyr::full_seq(.data$date_time, parse_step_to_seconds(step)),
       .data$namespace,
       fill = list(n_users = 0)
     )
