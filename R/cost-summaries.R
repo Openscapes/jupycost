@@ -76,8 +76,8 @@ get_daily_usage_costs <- function(
   }
 
   raw_daily <- sixtyfour::aws_billing(
-    as.character(start_date),
-    as.character(end_date),
+    format(start_date, "%Y-%m-%d"),
+    format(end_date, "%Y-%m-%d"),
     filter = filter_list
   )
 

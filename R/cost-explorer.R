@@ -223,8 +223,8 @@ query_hub_names <- function(start_date, end_date) {
   # ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ce/client/get_tags.html
   response <- aws_ce_client$get_tags(
     TimePeriod = list(
-      Start = as.character(start_date),
-      End = as.character(end_date)
+      Start = format(start_date, "%Y-%m-%d"),
+      End = format(end_date, "%Y-%m-%d")
     ),
     TagKey = "2i2c:hub-name"
   )
