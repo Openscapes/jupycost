@@ -261,8 +261,21 @@ test_that("get_workshop_users() works with nasa (by_user = TRUE)", {
   )
 
   expect_s3_class(ret, "data.frame")
-  expect_named(ret, c("namespace", "directory", "start_time", "end_time"))
+  expect_named(
+    ret,
+    c(
+      "namespace",
+      "directory",
+      "first_seen",
+      "last_seen",
+      "start_time",
+      "end_time"
+    )
+  )
   expect_type(ret$directory, "character")
+  expect_s3_class(ret$first_seen, "Date")
+  expect_s3_class(ret$last_seen, "Date")
+  expect_true(all(ret$first_seen <= ret$last_seen, na.rm = TRUE))
 })
 
 test_that("get_workshop_users() works with nmfs", {
@@ -317,7 +330,7 @@ test_that("get_workshop_users() works with mocked response (by_user = FALSE)", {
 })
 
 test_that("get_workshop_users() works with mocked response (by_user = TRUE)", {
-  mock_response <- list(
+  mock_dirs <- list(
     data = list(
       result = list(
         metric = data.frame(
@@ -332,9 +345,50 @@ test_that("get_workshop_users() works with mocked response (by_user = TRUE)", {
     )
   )
 
+  # first_seen: user-one was first seen 2024-01-01, user-two on 2024-01-06
+  mock_first <- list(
+    data = list(
+      result = list(
+        metric = data.frame(
+          namespace = c("workshop", "workshop"),
+          directory = c("user-2done", "user-2dtwo")
+        ),
+        value = list(
+          c("1704067200", "1704067200"),
+          c("1704067200", "1704499200")
+        )
+      )
+    )
+  )
+
+  # last_seen: user-one last seen 2024-01-20, user-two on 2024-01-31
+  mock_last <- list(
+    data = list(
+      result = list(
+        metric = data.frame(
+          namespace = c("workshop", "workshop"),
+          directory = c("user-2done", "user-2dtwo")
+        ),
+        value = list(
+          c("1704067200", "1705708800"),
+          c("1704067200", "1706659200")
+        )
+      )
+    )
+  )
+
   local_mocked_bindings(
     req_perform = function(...) structure(list(), class = "httr2_response"),
-    resp_body_json = function(...) mock_response,
+    resp_body_json = function(...) {
+      q <- parent.frame()$query
+      if (!grepl("timestamp", q)) {
+        return(mock_dirs)
+      }
+      if (grepl("min_over_time", q)) {
+        return(mock_first)
+      }
+      mock_last
+    },
     resp_check_status = function(x) x,
     .package = "httr2"
   )
@@ -350,10 +404,25 @@ test_that("get_workshop_users() works with mocked response (by_user = TRUE)", {
   )
 
   expect_s3_class(result, "data.frame")
-  expect_named(result, c("namespace", "directory", "start_time", "end_time"))
+  expect_named(
+    result,
+    c(
+      "namespace",
+      "directory",
+      "first_seen",
+      "last_seen",
+      "start_time",
+      "end_time"
+    )
+  )
   expect_equal(result$namespace, c("workshop", "workshop"))
   # Sanitized directory names ("-2d" -> "-") should be reversed
   expect_equal(result$directory, c("user-one", "user-two"))
+  expect_s3_class(result$first_seen, "Date")
+  expect_s3_class(result$last_seen, "Date")
+  expect_equal(result$first_seen, as.Date(c("2024-01-01", "2024-01-06")))
+  expect_equal(result$last_seen, as.Date(c("2024-01-20", "2024-01-31")))
+  expect_true(all(result$first_seen <= result$last_seen))
   expect_equal(result$start_time, rep(as.Date("2024-01-01"), 2))
   expect_equal(result$end_time, rep(as.Date("2024-01-31"), 2))
 })

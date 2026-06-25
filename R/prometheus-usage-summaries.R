@@ -162,15 +162,12 @@ user_dir_snapshot <- function(
 #'
 #' @description
 #' Count distinct user directories that existed in the workshop namespace over a
-#' given time period. Crucially, this **includes users whose directories have
-#' since been removed**: Prometheus preserves historical `dirsize_total_size_bytes`
+#' given time period. This includes users whose directories have
+#' since been removed: Prometheus preserves historical `dirsize_total_size_bytes`
 #' time series even after a home directory is deleted, so any directory that had
-#' at least one sample within the queried window is counted.
-#'
-#' The function uses a Prometheus instant query with
-#' `max_over_time(dirsize_total_size_bytes[<duration>])` at `end_time`. Each
-#' user directory is a distinct time series; `count()` over these series gives
-#' the total number of unique directories (users) that existed in the window.
+#' at least one sample within the queried window is counted. Typically the data
+#' is retained in prometheus for 3 years, so this should be able to look back
+#' that far.
 #'
 #' @inheritParams query_prometheus_range
 #' @param namespace Hub namespace to filter on. Default `"workshop"`. Set to
@@ -178,16 +175,23 @@ user_dir_snapshot <- function(
 #' @param exclude_pattern An optional regular expression matched against
 #'   directory names to exclude (e.g., admin or infrastructure accounts).
 #'   Default `NULL` (no exclusions).
-#' @param by_user If `TRUE`, return one row per directory instead of a
-#'   summary count. Useful for inspecting which specific users are included.
+#' @param by_user If `TRUE`, return one row per directory with approximate
+#'   `first_seen` and `last_seen` dates instead of a summary count.
 #'   Default `FALSE`.
+#' @param step Resolution for `first_seen`/`last_seen` timestamps when
+#'   `by_user = TRUE`, as a string in `"*h*m*s"` format (e.g. `"24h0m0s"` for
+#'   daily resolution). Finer steps improve timestamp accuracy at the cost of a
+#'   more expensive query. Ignored when `by_user = FALSE`. Default 1 day (`"24h0m0s"`).
 #'
 #' @returns
 #' When `by_user = FALSE` (default): a data frame with one row per namespace
 #' and columns `namespace`, `n_users`, `start_time`, `end_time`.
 #'
 #' When `by_user = TRUE`: a data frame with one row per user directory and
-#' columns `namespace`, `directory`, `start_time`, `end_time`.
+#' columns `namespace`, `directory`, `first_seen`, `last_seen`, `start_time`,
+#' `end_time`. Timestamps are approximate to the resolution of `step`.
+#' A `last_seen` close to `end_time` indicates the directory likely still
+#' exists; a `last_seen` well before `end_time` indicates deletion.
 #'
 #' @export
 get_workshop_users <- function(
@@ -197,7 +201,8 @@ get_workshop_users <- function(
   end_time = Sys.Date(),
   namespace = "workshop",
   exclude_pattern = NULL,
-  by_user = FALSE
+  by_user = FALSE,
+  step = "24h0m0s"
 ) {
   # Compute the duration in seconds between start and end. This becomes the
   # range vector lookback passed to max_over_time(), ensuring we capture
@@ -221,9 +226,11 @@ get_workshop_users <- function(
   }
 
   if (by_user) {
+    step_secs <- parse_step_to_seconds(step)
+
     # max(...) by (namespace, directory) collapses any extra label dimensions
     # (e.g. node/instance) so each directory appears exactly once.
-    query <- glue::glue(
+    dir_query <- glue::glue(
       'max(
         max_over_time(
           dirsize_total_size_bytes{<selectors>}[<duration_secs>s]
@@ -232,6 +239,108 @@ get_workshop_users <- function(
       .open = "<",
       .close = ">"
     )
+
+    # PromQL subqueries: evaluate timestamp() at every step_secs over the full
+    # window, then take min/max. Gives the first/last scrape at which each
+    # directory was observed — a proxy for creation and deletion time.
+    first_seen_query <- glue::glue(
+      'max(
+        min_over_time(
+          timestamp(
+            dirsize_total_size_bytes{<selectors>}
+          )[<duration_secs>s:<step_secs>s]
+        )
+      ) by (namespace, directory)',
+      .open = "<",
+      .close = ">"
+    )
+
+    last_seen_query <- glue::glue(
+      'max(
+        max_over_time(
+          timestamp(
+            dirsize_total_size_bytes{<selectors>}
+          )[<duration_secs>s:<step_secs>s]
+        )
+      ) by (namespace, directory)',
+      .open = "<",
+      .close = ">"
+    )
+
+    raw_dirs <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = dir_query,
+      time = end_time
+    )
+
+    if (length(raw_dirs$data$result) == 0) {
+      return(
+        data.frame(
+          namespace = character(),
+          directory = character(),
+          first_seen = as.Date(character()),
+          last_seen = as.Date(character()),
+          start_time = as.Date(character()),
+          end_time = as.Date(character())
+        )
+      )
+    }
+
+    raw_first <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = first_seen_query,
+      time = end_time
+    )
+
+    raw_last <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = last_seen_query,
+      time = end_time
+    )
+
+    dirs <- format_prom_result(
+      raw_dirs,
+      value_name = "dirsize_mb",
+      value_fn = \(x) as.numeric(x) * 1e-6
+    )
+    first_seen <- format_prom_result(
+      raw_first,
+      "first_seen",
+      value_fn = prom_date
+    )
+    last_seen <- format_prom_result(raw_last, "last_seen", value_fn = prom_date)
+
+    # Join on sanitized names so keys are stable, then unsanitize afterwards.
+    join_cols <- c("namespace", "directory")
+
+    dirs |>
+      dplyr::left_join(
+        dplyr::select(first_seen, "namespace", "directory", "first_seen"),
+        by = join_cols
+      ) |>
+      dplyr::left_join(
+        dplyr::select(last_seen, "namespace", "directory", "last_seen"),
+        by = join_cols
+      ) |>
+      dplyr::mutate(
+        directory = unsanitize_dir_names(.data$directory),
+        first_seen = as.Date(.data$first_seen),
+        last_seen = as.Date(.data$last_seen),
+        start_time = as.Date(start_time),
+        end_time = as.Date(end_time)
+      ) |>
+      dplyr::select(
+        "namespace",
+        "directory",
+        "first_seen",
+        "last_seen",
+        "start_time",
+        "end_time"
+      ) |>
+      dplyr::distinct()
   } else {
     # The intermediate max(...) by (namespace, directory) collapses extra label
     # dimensions before count(), ensuring we count distinct directories only.
@@ -246,28 +355,15 @@ get_workshop_users <- function(
       .open = "<",
       .close = ">"
     )
-  }
 
-  raw <- query_prometheus_instant(
-    grafana_url = grafana_url,
-    grafana_token = grafana_token,
-    query = query,
-    time = end_time
-  )
+    raw <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = query,
+      time = end_time
+    )
 
-  # Return an empty data frame with the correct columns when no series are found
-  # (e.g. a namespace with no directory data in the queried window).
-  if (length(raw$data$result) == 0) {
-    if (by_user) {
-      return(
-        data.frame(
-          namespace = character(),
-          directory = character(),
-          start_time = as.Date(character()),
-          end_time = as.Date(character())
-        )
-      )
-    } else {
+    if (length(raw$data$result) == 0) {
       return(
         data.frame(
           namespace = character(),
@@ -277,25 +373,8 @@ get_workshop_users <- function(
         )
       )
     }
-  }
 
-  result <- format_prom_result(
-    raw,
-    value_name = if (by_user) "dirsize_mb" else "n_users",
-    value_fn = if (by_user) \(x) as.numeric(x) * 1e-6 else as.integer
-  )
-
-  if (by_user) {
-    result |>
-      dplyr::mutate(
-        directory = unsanitize_dir_names(.data$directory),
-        start_time = as.Date(start_time),
-        end_time = as.Date(end_time)
-      ) |>
-      dplyr::select("namespace", "directory", "start_time", "end_time") |>
-      dplyr::distinct()
-  } else {
-    result |>
+    format_prom_result(raw, value_name = "n_users", value_fn = as.integer) |>
       dplyr::mutate(
         start_time = as.Date(start_time),
         end_time = as.Date(end_time)
