@@ -11,7 +11,8 @@ get_workshop_users(
   end_time = Sys.Date(),
   namespace = "workshop",
   exclude_pattern = NULL,
-  by_user = FALSE
+  by_user = FALSE,
+  step = "24h0m0s"
 )
 }
 \arguments{
@@ -38,26 +39,31 @@ to UTC, if a \code{Date} or \code{character} object, it will be assumed to be \c
 directory names to exclude (e.g., admin or infrastructure accounts).
 Default \code{NULL} (no exclusions).}
 
-\item{by_user}{If \code{TRUE}, return one row per directory instead of a
-summary count. Useful for inspecting which specific users are included.
+\item{by_user}{If \code{TRUE}, return one row per directory with approximate
+\code{first_seen} and \code{last_seen} dates instead of a summary count.
 Default \code{FALSE}.}
+
+\item{step}{Resolution for \code{first_seen}/\code{last_seen} timestamps when
+\code{by_user = TRUE}, as a string in \code{"*h*m*s"} format (e.g. \code{"24h0m0s"} for
+daily resolution). Finer steps improve timestamp accuracy at the cost of a
+more expensive query. Ignored when \code{by_user = FALSE}. Default 1 day (\code{"24h0m0s"}).}
 }
 \value{
 When \code{by_user = FALSE} (default): a data frame with one row per namespace
 and columns \code{namespace}, \code{n_users}, \code{start_time}, \code{end_time}.
 
 When \code{by_user = TRUE}: a data frame with one row per user directory and
-columns \code{namespace}, \code{directory}, \code{start_time}, \code{end_time}.
+columns \code{namespace}, \code{directory}, \code{first_seen}, \code{last_seen}, \code{start_time},
+\code{end_time}. Timestamps are approximate to the resolution of \code{step}.
+A \code{last_seen} close to \code{end_time} indicates the directory likely still
+exists; a \code{last_seen} well before \code{end_time} indicates deletion.
 }
 \description{
 Count distinct user directories that existed in the workshop namespace over a
-given time period. Crucially, this \strong{includes users whose directories have
-since been removed}: Prometheus preserves historical \code{dirsize_total_size_bytes}
+given time period. This includes users whose directories have
+since been removed: Prometheus preserves historical \code{dirsize_total_size_bytes}
 time series even after a home directory is deleted, so any directory that had
-at least one sample within the queried window is counted.
-
-The function uses a Prometheus instant query with
-\verb{max_over_time(dirsize_total_size_bytes[<duration>])} at \code{end_time}. Each
-user directory is a distinct time series; \code{count()} over these series gives
-the total number of unique directories (users) that existed in the window.
+at least one sample within the queried window is counted. Typically the data
+is retained in prometheus for 3 years, so this should be able to look back
+that far.
 }

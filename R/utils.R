@@ -3,10 +3,6 @@
 #' Where directory names have had special characters replaced through url-encoding,
 #' revert them back to their unescaped forms.
 #'
-#' All encoded sequences are replaced in a single atomic pass, preventing
-#' sequential interference where one decoded character (e.g. `-` from `-2d`)
-#' could combine with adjacent characters to form a new encoded pattern.
-#'
 #' @param x A character vector of sanitized directory names.
 #'
 #' @returns
