@@ -132,8 +132,12 @@ test_that("user_dir_snapshot works with mocked responses", {
     req_perform = function(...) structure(list(), class = "httr2_response"),
     resp_body_json = function(...) {
       parent <- parent.frame()
-      if (grepl("mtime", parent$query)) return(mock_date_response)
-      if (grepl("size_bytes", parent$query)) return(mock_size_response)
+      if (grepl("mtime", parent$query)) {
+        return(mock_date_response)
+      }
+      if (grepl("size_bytes", parent$query)) {
+        return(mock_size_response)
+      }
       if (grepl("entries_count", parent$query)) return(mock_files_response)
     },
     resp_check_status = function(x) x,
@@ -229,6 +233,129 @@ test_that("dir_sizes() works with by_user = TRUE", {
   expect_equal(result$namespace, "test")
   expect_equal(result$directory, "user-dir")
   expect_equal(result$dirsize_mb, 1)
+})
+
+test_that("get_workshop_users() works with nasa (by_user = FALSE)", {
+  set_env_vars("nasa")
+  skip_if_env_vars_not_set()
+  skip_if_offline()
+
+  ret <- get_workshop_users(start_time = "2025-01-01", end_time = "2025-01-10")
+
+  expect_s3_class(ret, "data.frame")
+  expect_named(ret, c("namespace", "n_users", "start_time", "end_time"))
+  expect_type(ret$n_users, "integer")
+  expect_s3_class(ret$start_time, "Date")
+  expect_s3_class(ret$end_time, "Date")
+})
+
+test_that("get_workshop_users() works with nasa (by_user = TRUE)", {
+  set_env_vars("nasa")
+  skip_if_env_vars_not_set()
+  skip_if_offline()
+
+  ret <- get_workshop_users(
+    start_time = "2025-01-01",
+    end_time = "2025-01-10",
+    by_user = TRUE
+  )
+
+  expect_s3_class(ret, "data.frame")
+  expect_named(ret, c("namespace", "directory", "start_time", "end_time"))
+  expect_type(ret$directory, "character")
+})
+
+test_that("get_workshop_users() works with nmfs", {
+  set_env_vars("nmfs")
+  skip_if_env_vars_not_set()
+  skip_if_offline()
+
+  ret <- get_workshop_users(
+    grafana_url = "https://grafana.nmfs-openscapes.2i2c.cloud",
+    start_time = "2025-01-01",
+    end_time = "2025-01-10",
+    namespace = NULL
+  )
+
+  expect_s3_class(ret, "data.frame")
+  expect_named(ret, c("namespace", "n_users", "start_time", "end_time"))
+  expect_type(ret$n_users, "integer")
+})
+
+test_that("get_workshop_users() works with mocked response (by_user = FALSE)", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(namespace = "workshop"),
+        value = list(c("1704067200", "5"))
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+
+  local_mocked_bindings(
+    get_default_prometheus_uid = function(...) "foo"
+  )
+
+  result <- get_workshop_users(
+    start_time = as.Date("2024-01-01"),
+    end_time = as.Date("2024-01-31")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(result, c("namespace", "n_users", "start_time", "end_time"))
+  expect_equal(result$namespace, "workshop")
+  expect_equal(result$n_users, 5L)
+  expect_equal(result$start_time, as.Date("2024-01-01"))
+  expect_equal(result$end_time, as.Date("2024-01-31"))
+})
+
+test_that("get_workshop_users() works with mocked response (by_user = TRUE)", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(
+          namespace = c("workshop", "workshop"),
+          directory = c("user-2done", "user-2dtwo")
+        ),
+        value = list(
+          c("1704067200", "1000000"),
+          c("1704067200", "2000000")
+        )
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+
+  local_mocked_bindings(
+    get_default_prometheus_uid = function(...) "foo"
+  )
+
+  result <- get_workshop_users(
+    by_user = TRUE,
+    start_time = as.Date("2024-01-01"),
+    end_time = as.Date("2024-01-31")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(result, c("namespace", "directory", "start_time", "end_time"))
+  expect_equal(result$namespace, c("workshop", "workshop"))
+  # Sanitized directory names ("-2d" -> "-") should be reversed
+  expect_equal(result$directory, c("user-one", "user-two"))
+  expect_equal(result$start_time, rep(as.Date("2024-01-01"), 2))
+  expect_equal(result$end_time, rep(as.Date("2024-01-31"), 2))
 })
 
 test_that("dir_sizes() works with by_user = FALSE", {

@@ -158,6 +158,152 @@ user_dir_snapshot <- function(
     )
 }
 
+#' Get workshop user count over a time period
+#'
+#' @description
+#' Count distinct user directories that existed in the workshop namespace over a
+#' given time period. Crucially, this **includes users whose directories have
+#' since been removed**: Prometheus preserves historical `dirsize_total_size_bytes`
+#' time series even after a home directory is deleted, so any directory that had
+#' at least one sample within the queried window is counted.
+#'
+#' The function uses a Prometheus instant query with
+#' `max_over_time(dirsize_total_size_bytes[<duration>])` at `end_time`. Each
+#' user directory is a distinct time series; `count()` over these series gives
+#' the total number of unique directories (users) that existed in the window.
+#'
+#' @inheritParams query_prometheus_range
+#' @param namespace Hub namespace to filter on. Default `"workshop"`. Set to
+#'   `NULL` to query all namespaces.
+#' @param exclude_pattern An optional regular expression matched against
+#'   directory names to exclude (e.g., admin or infrastructure accounts).
+#'   Default `NULL` (no exclusions).
+#' @param by_user If `TRUE`, return one row per directory instead of a
+#'   summary count. Useful for inspecting which specific users are included.
+#'   Default `FALSE`.
+#'
+#' @returns
+#' When `by_user = FALSE` (default): a data frame with one row per namespace
+#' and columns `namespace`, `n_users`, `start_time`, `end_time`.
+#'
+#' When `by_user = TRUE`: a data frame with one row per user directory and
+#' columns `namespace`, `directory`, `start_time`, `end_time`.
+#'
+#' @export
+get_workshop_users <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
+  namespace = "workshop",
+  exclude_pattern = NULL,
+  by_user = FALSE
+) {
+  # Compute the duration in seconds between start and end. This becomes the
+  # range vector lookback passed to max_over_time(), ensuring we capture
+  # directories that existed at any point in the window, including deleted ones.
+  duration_secs <- as.integer(
+    difftime(
+      lubridate::as_datetime(end_time, tz = "UTC"),
+      lubridate::as_datetime(start_time, tz = "UTC"),
+      units = "secs"
+    )
+  )
+
+  # Build PromQL label selectors
+  selectors <- if (!is.null(namespace)) {
+    paste0('namespace="', namespace, '"')
+  } else {
+    'namespace=~".*"'
+  }
+  if (!is.null(exclude_pattern)) {
+    selectors <- paste0(selectors, ', directory!~"', exclude_pattern, '"')
+  }
+
+  if (by_user) {
+    # max(...) by (namespace, directory) collapses any extra label dimensions
+    # (e.g. node/instance) so each directory appears exactly once.
+    query <- glue::glue(
+      'max(
+        max_over_time(
+          dirsize_total_size_bytes{<selectors>}[<duration_secs>s]
+        )
+      ) by (namespace, directory)',
+      .open = "<",
+      .close = ">"
+    )
+  } else {
+    # The intermediate max(...) by (namespace, directory) collapses extra label
+    # dimensions before count(), ensuring we count distinct directories only.
+    query <- glue::glue(
+      'count(
+        max(
+          max_over_time(
+            dirsize_total_size_bytes{<selectors>}[<duration_secs>s]
+          )
+        ) by (namespace, directory)
+      ) by (namespace)',
+      .open = "<",
+      .close = ">"
+    )
+  }
+
+  raw <- query_prometheus_instant(
+    grafana_url = grafana_url,
+    grafana_token = grafana_token,
+    query = query,
+    time = end_time
+  )
+
+  # Return an empty data frame with the correct columns when no series are found
+  # (e.g. a namespace with no directory data in the queried window).
+  if (length(raw$data$result) == 0) {
+    if (by_user) {
+      return(
+        data.frame(
+          namespace = character(),
+          directory = character(),
+          start_time = as.Date(character()),
+          end_time = as.Date(character())
+        )
+      )
+    } else {
+      return(
+        data.frame(
+          namespace = character(),
+          n_users = integer(),
+          start_time = as.Date(character()),
+          end_time = as.Date(character())
+        )
+      )
+    }
+  }
+
+  result <- format_prom_result(
+    raw,
+    value_name = if (by_user) "dirsize_mb" else "n_users",
+    value_fn = if (by_user) \(x) as.numeric(x) * 1e-6 else as.integer
+  )
+
+  if (by_user) {
+    result |>
+      dplyr::mutate(
+        directory = unsanitize_dir_names(.data$directory),
+        start_time = as.Date(start_time),
+        end_time = as.Date(end_time)
+      ) |>
+      dplyr::select("namespace", "directory", "start_time", "end_time") |>
+      dplyr::distinct()
+  } else {
+    result |>
+      dplyr::mutate(
+        start_time = as.Date(start_time),
+        end_time = as.Date(end_time)
+      ) |>
+      dplyr::select("namespace", "n_users", "start_time", "end_time")
+  }
+}
+
 #' Query directory sizes over time from Grafana
 #'
 #' @param by_user A logical value indicating whether to group by user (directory). Default FALSE
