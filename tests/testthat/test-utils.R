@@ -4,8 +4,24 @@ test_that("unsanitize_dir_names reverses sanitization", {
   expect_equal(unsanitize_dir_names("hello-40world"), "hello@world")
   expect_equal(unsanitize_dir_names("hello-5fworld"), "hello_world")
   expect_equal(
-    unsanitize_dir_names("hello-2dworld-2etest-40example-5ffile"),
-    "hello-world.test@example_file"
+    unsanitize_dir_names(c(
+      "hello-2dworld-2etest-40example-5ffile",
+      "hello-world-2etest-40example_file"
+    )),
+    c("hello-world.test@example_file", "hello-world.test@example_file")
+  )
+})
+
+test_that("unsanitize_dir_names decodes all patterns atomically", {
+  # A username containing a literal "-2e" sanitizes to "-2d2e" ("-" -> "-2d",
+  # "2e" is kept as-is). Sequential gsubs would decode "-2d" to "-", then
+  # incorrectly decode the resulting "-2e" to ".", giving "-." instead of "-2e".
+  expect_equal(unsanitize_dir_names("user-2d2etest"), "user-2etest")
+
+  # Vectorised: should handle multiple strings correctly
+  expect_equal(
+    unsanitize_dir_names(c("user-2d2etest", "hello-2dworld")),
+    c("user-2etest", "hello-world")
   )
 })
 

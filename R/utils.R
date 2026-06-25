@@ -1,7 +1,11 @@
 #' Unsanitize directory names
 #'
 #' Where directory names have had special characters replaced through url-encoding,
-#' revert them back to their unescaped forms
+#' revert them back to their unescaped forms.
+#'
+#' All encoded sequences are replaced in a single atomic pass, preventing
+#' sequential interference where one decoded character (e.g. `-` from `-2d`)
+#' could combine with adjacent characters to form a new encoded pattern.
 #'
 #' @param x A character vector of sanitized directory names.
 #'
@@ -10,10 +14,12 @@
 #'
 #' @export
 unsanitize_dir_names <- function(x) {
-  x <- gsub("-2d", "-", x)
-  x <- gsub("-2e", ".", x)
-  x <- gsub("-40", "@", x)
-  x <- gsub("-5f", "_", x)
+  lookup <- c("-2d" = "-", "-2e" = ".", "-40" = "@", "-5f" = "_")
+  pattern <- paste(names(lookup), collapse = "|")
+  m <- gregexpr(pattern, x, perl = TRUE)
+  regmatches(x, m) <- lapply(regmatches(x, m), \(matches) {
+    unname(lookup[matches])
+  })
   x
 }
 
