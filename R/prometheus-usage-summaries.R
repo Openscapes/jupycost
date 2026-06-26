@@ -28,7 +28,7 @@ get_daily_users <- function(
             kube_pod_labels{
               label_app="jupyterhub",
               label_component="singleuser-server",
-              label_hub_jupyter_org_username!~"(service|perf|hubtraf)-",
+              label_hub_jupyter_org_username!~"(service|perf|hubtraf)-"
           }[<aggregation>d]
           )
         ) by (pod, namespace)
@@ -240,13 +240,12 @@ get_workshop_users <- function(
       ) by (namespace, directory)'
     )
 
-    first_seen_query <-
-      raw_dirs <- query_prometheus_instant(
-        grafana_url = grafana_url,
-        grafana_token = grafana_token,
-        query = dir_query,
-        time = end_time
-      )
+    raw_dirs <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = dir_query,
+      time = end_time
+    )
 
     if (length(raw_dirs$data$result) == 0) {
       return(
