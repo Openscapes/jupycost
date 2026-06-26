@@ -464,3 +464,156 @@ test_that("dir_sizes() works with by_user = FALSE", {
   expect_equal(result$namespace, "test")
   expect_equal(result$dirsize_mb, 1)
 })
+
+
+# user_mem_requests() -------------------------------------------------------
+
+test_that("user_mem_requests() returns expected columns and values", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(
+          namespace                              = "workshop",
+          pod                                    = "jupyter-user-2dname",
+          label_beta_kubernetes_io_instance_type = "m5.2xlarge",
+          node                                   = "ip-10-0-1-1.ec2.internal",
+          image_id                               = "sha256:abc123"
+        ),
+        values = list(data.frame(V1 = 1704067200, V2 = "2000000000"))
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+  local_mocked_bindings(get_default_prometheus_uid = function(...) "foo")
+
+  result <- user_mem_requests(
+    start_time = as.POSIXct("2024-01-01"),
+    end_time   = as.POSIXct("2024-01-02")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(
+    result,
+    c("namespace", "pod", "label_beta_kubernetes_io_instance_type",
+      "node", "image_id", "date", "mem_mb")
+  )
+  expect_equal(result$namespace, "workshop")
+  expect_equal(result$pod, "jupyter-user-2dname")
+  expect_equal(result$mem_mb, 2000)   # 2e9 bytes * 1e-6 = 2000 MB
+  expect_s3_class(result$date, "POSIXct")
+})
+
+# user_cpu_requests() -------------------------------------------------------
+
+test_that("user_cpu_requests() returns expected columns and values", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(
+          namespace                              = "workshop",
+          pod                                    = "jupyter-user-2dname",
+          label_beta_kubernetes_io_instance_type = "m5.2xlarge",
+          node                                   = "ip-10-0-1-1.ec2.internal",
+          image_id                               = "sha256:abc123"
+        ),
+        values = list(data.frame(V1 = 1704067200, V2 = "2"))
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+  local_mocked_bindings(get_default_prometheus_uid = function(...) "foo")
+
+  result <- user_cpu_requests(
+    start_time = as.POSIXct("2024-01-01"),
+    end_time   = as.POSIXct("2024-01-02")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(
+    result,
+    c("namespace", "pod", "label_beta_kubernetes_io_instance_type",
+      "node", "image_id", "date", "cpu_cores")
+  )
+  expect_equal(result$namespace, "workshop")
+  expect_equal(result$pod, "jupyter-user-2dname")
+  expect_equal(result$cpu_cores, 2)
+  expect_s3_class(result$date, "POSIXct")
+})
+
+# user_mem_usage() ----------------------------------------------------------
+
+test_that("user_mem_usage() returns expected columns and values", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(pod = "jupyter-user-2dname", namespace = "workshop"),
+        values = list(data.frame(V1 = 1704067200, V2 = "500000000"))
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+  local_mocked_bindings(get_default_prometheus_uid = function(...) "foo")
+
+  result <- user_mem_usage(
+    start_time = as.POSIXct("2024-01-01"),
+    end_time   = as.POSIXct("2024-01-02")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(result, c("pod", "namespace", "date", "mem_mb"))
+  expect_equal(result$pod, "jupyter-user-2dname")
+  expect_equal(result$namespace, "workshop")
+  expect_equal(result$mem_mb, 500)    # 5e8 bytes * 1e-6 = 500 MB
+  expect_s3_class(result$date, "POSIXct")
+})
+
+# user_cpu_usage() ----------------------------------------------------------
+
+test_that("user_cpu_usage() returns expected columns and values", {
+  mock_response <- list(
+    data = list(
+      result = list(
+        metric = data.frame(pod = "jupyter-user-2dname", namespace = "workshop"),
+        values = list(data.frame(V1 = 1704067200, V2 = "0.5"))
+      )
+    )
+  )
+
+  local_mocked_bindings(
+    req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_body_json = function(...) mock_response,
+    resp_check_status = function(x) x,
+    .package = "httr2"
+  )
+  local_mocked_bindings(get_default_prometheus_uid = function(...) "foo")
+
+  result <- user_cpu_usage(
+    start_time = as.POSIXct("2024-01-01"),
+    end_time   = as.POSIXct("2024-01-02")
+  )
+
+  expect_s3_class(result, "data.frame")
+  expect_named(result, c("pod", "namespace", "date", "cpu_percent"))
+  expect_equal(result$pod, "jupyter-user-2dname")
+  expect_equal(result$namespace, "workshop")
+  expect_equal(result$cpu_percent, 0.5 * 1e-6)
+  expect_s3_class(result$date, "POSIXct")
+})
