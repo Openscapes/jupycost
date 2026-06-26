@@ -21,15 +21,15 @@ get_daily_users <- function(
   res <- query_prometheus_range(
     grafana_url = grafana_url,
     grafana_token = grafana_token,
-    query = glue::glue(
+    query = glue_promql(
       'count(
         sum(
           min_over_time(
-            kube_pod_labels{{
+            kube_pod_labels{
               label_app="jupyterhub",
               label_component="singleuser-server",
               label_hub_jupyter_org_username!~"(service|perf|hubtraf)-",
-          }}[{aggregation}d]
+          }[<aggregation>d]
           )
         ) by (pod, namespace)
       ) by (namespace)'
@@ -230,41 +230,35 @@ get_workshop_users <- function(
 
     # max(...) by (namespace, directory) collapses any extra label dimensions
     # (e.g. node/instance) so each directory appears exactly once.
-    dir_query <- glue::glue(
+    dir_query <- glue_promql(
       'max(
         max_over_time(
           dirsize_total_size_bytes{<selectors>}[<duration_secs>s]
         )
-      ) by (namespace, directory)',
-      .open = "<",
-      .close = ">"
+      ) by (namespace, directory)'
     )
 
     # PromQL subqueries: evaluate timestamp() at every step_secs over the full
     # window, then take min/max. Gives the first/last scrape at which each
     # directory was observed — a proxy for creation and deletion time.
-    first_seen_query <- glue::glue(
+    first_seen_query <- glue_promql(
       'max(
         min_over_time(
           timestamp(
             dirsize_total_size_bytes{<selectors>}
           )[<duration_secs>s:<step_secs>s]
         )
-      ) by (namespace, directory)',
-      .open = "<",
-      .close = ">"
+      ) by (namespace, directory)'
     )
 
-    last_seen_query <- glue::glue(
+    last_seen_query <- glue_promql(
       'max(
         max_over_time(
           timestamp(
             dirsize_total_size_bytes{<selectors>}
           )[<duration_secs>s:<step_secs>s]
         )
-      ) by (namespace, directory)',
-      .open = "<",
-      .close = ">"
+      ) by (namespace, directory)'
     )
 
     raw_dirs <- query_prometheus_instant(
@@ -344,16 +338,14 @@ get_workshop_users <- function(
   } else {
     # The intermediate max(...) by (namespace, directory) collapses extra label
     # dimensions before count(), ensuring we count distinct directories only.
-    query <- glue::glue(
+    query <- glue_promql(
       'count(
         max(
           max_over_time(
             dirsize_total_size_bytes{<selectors>}[<duration_secs>s]
           )
         ) by (namespace, directory)
-      ) by (namespace)',
-      .open = "<",
-      .close = ">"
+      ) by (namespace)'
     )
 
     raw <- query_prometheus_instant(
@@ -509,16 +501,14 @@ user_cpu_requests <- function(
 }
 
 resource_requests_query <- function(resource) {
-  glue::glue(
+  glue_promql(
     'sum(
   kube_pod_container_resource_requests{resource="<resource>", pod=~"jupyter-.*"}
   * on(node) group_left(label_beta_kubernetes_io_instance_type)
   kube_node_labels
 ) by (namespace, pod, label_beta_kubernetes_io_instance_type, node)
 * on(namespace, pod) group_left(image_id)
-kube_pod_container_info{namespace=~".*", pod=~"jupyter-.*"}',
-    .open = "<",
-    .close = ">"
+kube_pod_container_info{namespace=~".*", pod=~"jupyter-.*"}'
   )
 }
 

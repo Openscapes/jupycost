@@ -163,3 +163,7 @@ parse_step_to_seconds <- function(step) {
 
   hours * 3600 + minutes * 60 + seconds
 }
+
+glue_promql <- function(..., .envir = parent.frame()) {
+  glue::glue(..., .envir = .envir, .open = "<", .close = ">")
+}
