@@ -264,7 +264,7 @@ get_workshop_users <- function(
     # PromQL subqueries: evaluate timestamp() at every step_secs over the full
     # window, then take min/max. Gives the first/last scrape at which each
     # directory was observed — a proxy for creation and deletion time.
-    seen_query <- 'max(
+    seen_query <- '<when>(
         <when>_over_time(
           timestamp(
             dirsize_total_size_bytes{<selectors>}
