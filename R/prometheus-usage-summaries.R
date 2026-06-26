@@ -238,35 +238,13 @@ get_workshop_users <- function(
       ) by (namespace, directory)'
     )
 
-    # PromQL subqueries: evaluate timestamp() at every step_secs over the full
-    # window, then take min/max. Gives the first/last scrape at which each
-    # directory was observed — a proxy for creation and deletion time.
-    first_seen_query <- glue_promql(
-      'max(
-        min_over_time(
-          timestamp(
-            dirsize_total_size_bytes{<selectors>}
-          )[<duration_secs>s:<step_secs>s]
-        )
-      ) by (namespace, directory)'
-    )
-
-    last_seen_query <- glue_promql(
-      'max(
-        max_over_time(
-          timestamp(
-            dirsize_total_size_bytes{<selectors>}
-          )[<duration_secs>s:<step_secs>s]
-        )
-      ) by (namespace, directory)'
-    )
-
-    raw_dirs <- query_prometheus_instant(
-      grafana_url = grafana_url,
-      grafana_token = grafana_token,
-      query = dir_query,
-      time = end_time
-    )
+    first_seen_query <-
+      raw_dirs <- query_prometheus_instant(
+        grafana_url = grafana_url,
+        grafana_token = grafana_token,
+        query = dir_query,
+        time = end_time
+      )
 
     if (length(raw_dirs$data$result) == 0) {
       return(
@@ -281,17 +259,28 @@ get_workshop_users <- function(
       )
     }
 
+    # PromQL subqueries: evaluate timestamp() at every step_secs over the full
+    # window, then take min/max. Gives the first/last scrape at which each
+    # directory was observed — a proxy for creation and deletion time.
+    seen_query <- 'max(
+        <when>_over_time(
+          timestamp(
+            dirsize_total_size_bytes{<selectors>}
+          )[<duration_secs>s:<step_secs>s]
+        )
+      ) by (namespace, directory)'
+
     raw_first <- query_prometheus_instant(
       grafana_url = grafana_url,
       grafana_token = grafana_token,
-      query = first_seen_query,
+      query = glue_promql(seen_query, when = "min"),
       time = end_time
     )
 
     raw_last <- query_prometheus_instant(
       grafana_url = grafana_url,
       grafana_token = grafana_token,
-      query = last_seen_query,
+      query = glue_promql(seen_query, when = "max"),
       time = end_time
     )
 
@@ -300,12 +289,18 @@ get_workshop_users <- function(
       value_name = "dirsize_mb",
       value_fn = \(x) as.numeric(x) * 1e-6
     )
+
     first_seen <- format_prom_result(
       raw_first,
       "first_seen",
       value_fn = prom_date
     )
-    last_seen <- format_prom_result(raw_last, "last_seen", value_fn = prom_date)
+
+    last_seen <- format_prom_result(
+      raw_last,
+      "last_seen",
+      value_fn = prom_date
+    )
 
     # Join on sanitized names so keys are stable, then unsanitize afterwards.
     join_cols <- c("namespace", "directory")
