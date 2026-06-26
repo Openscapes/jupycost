@@ -214,7 +214,9 @@ get_workshop_users <- function(
       units = "secs"
     )
   )
-
+  if (is.na(duration_secs) || duration_secs <= 0) {
+    cli::cli_abort("{.arg start_time} must be earlier than {.arg end_time}.")
+  }
   # Build PromQL label selectors
   selectors <- if (!is.null(namespace)) {
     paste0('namespace="', namespace, '"')
