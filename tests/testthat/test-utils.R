@@ -68,3 +68,41 @@ test_that("time_string errors on invalid inputs", {
   expect_snapshot(error = TRUE, time_string(NA))
   expect_snapshot(error = TRUE, time_string(42))
 })
+
+
+test_that("parse_step_to_seconds handles valid string inputs", {
+  expect_equal(parse_step_to_seconds("24h0m0s"), 86400) # typical daily step
+  expect_equal(parse_step_to_seconds("0h10m0s"), 600) # typical 10-min step
+  expect_equal(parse_step_to_seconds("0h0m30s"), 30) # seconds only
+  expect_equal(parse_step_to_seconds("1h30m45s"), 5445) # all three components
+  expect_equal(parse_step_to_seconds("1h0m0s"), 3600)
+})
+
+test_that("parse_step_to_seconds handles all Prometheus duration units", {
+  expect_equal(parse_step_to_seconds("1d"), 86400)
+  expect_equal(parse_step_to_seconds("1w"), 7 * 86400)
+  expect_equal(parse_step_to_seconds("1y"), 365 * 86400)
+  expect_equal(parse_step_to_seconds("500ms"), 0.5)
+  expect_equal(parse_step_to_seconds("1h30m500ms"), 5400.5)
+  expect_equal(
+    parse_step_to_seconds("1w2d3h"),
+    7 * 86400 + 2 * 86400 + 3 * 3600
+  )
+})
+
+test_that("parse_step_to_seconds passes numeric input through unchanged", {
+  expect_equal(parse_step_to_seconds(3600), 3600)
+  expect_equal(parse_step_to_seconds(3600L), 3600L)
+  expect_equal(parse_step_to_seconds(0.5), 0.5)
+})
+
+test_that("parse_step_to_seconds errors on malformed strings", {
+  expect_error(parse_step_to_seconds("30"), class = "rlang_error") # no unit
+  expect_error(parse_step_to_seconds(""), class = "rlang_error") # empty
+  expect_error(parse_step_to_seconds("1x"), class = "rlang_error") # bad unit
+})
+
+test_that("parse_step_to_seconds errors on non-string, non-numeric input", {
+  expect_error(parse_step_to_seconds(NULL), class = "rlang_error")
+  expect_error(parse_step_to_seconds(c("1h", "2h")), class = "rlang_error")
+})
