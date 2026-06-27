@@ -21,15 +21,15 @@ get_daily_users <- function(
   res <- query_prometheus_range(
     grafana_url = grafana_url,
     grafana_token = grafana_token,
-    query = glue::glue(
+    query = glue_promql(
       'count(
         sum(
           min_over_time(
-            kube_pod_labels{{
+            kube_pod_labels{
               label_app="jupyterhub",
               label_component="singleuser-server",
-              label_hub_jupyter_org_username!~"(service|perf|hubtraf)-",
-          }}[{aggregation}d]
+              label_hub_jupyter_org_username!~"(service|perf|hubtraf)-"
+          }[<aggregation>d]
           )
         ) by (pod, namespace)
       ) by (namespace)'
@@ -158,6 +158,219 @@ user_dir_snapshot <- function(
     )
 }
 
+#' Get workshop user count over a time period
+#'
+#' @description
+#' Count distinct user directories that existed in the workshop namespace over a
+#' given time period. This includes users whose directories have
+#' since been removed: Prometheus preserves historical `dirsize_total_size_bytes`
+#' time series even after a home directory is deleted, so any directory that had
+#' at least one sample within the queried window is counted. Typically the data
+#' is retained in prometheus for 3 years, so this should be able to look back
+#' that far.
+#'
+#' @inheritParams query_prometheus_range
+#' @param namespace Hub namespace to filter on. Default `"workshop"`. Set to
+#'   `NULL` to query all namespaces.
+#' @param exclude_pattern An optional regular expression matched against
+#'   directory names to exclude (e.g., admin or infrastructure accounts).
+#'   Default `NULL` (no exclusions).
+#' @param by_user If `TRUE`, return one row per directory with approximate
+#'   `first_seen` and `last_seen` dates instead of a summary count.
+#'   Default `FALSE`.
+#' @param step Resolution for `first_seen`/`last_seen` timestamps when
+#'   `by_user = TRUE`, as a string in `"*h*m*s"` format (e.g. `"24h0m0s"` for
+#'   daily resolution). Finer steps improve timestamp accuracy at the cost of a
+#'   more expensive query. Ignored when `by_user = FALSE`. Default 1 day (`"24h0m0s"`).
+#'
+#' @returns
+#' When `by_user = FALSE` (default): a data frame with one row per namespace
+#' and columns `namespace`, `n_users`, `start_time`, `end_time`.
+#'
+#' When `by_user = TRUE`: a data frame with one row per user directory and
+#' columns `namespace`, `directory`, `first_seen`, `last_seen`, `start_time`,
+#' `end_time`. Timestamps are approximate to the resolution of `step`.
+#' A `last_seen` close to `end_time` indicates the directory likely still
+#' exists; a `last_seen` well before `end_time` indicates deletion.
+#'
+#' @export
+get_workshop_users <- function(
+  grafana_url = "https://grafana.openscapes.2i2c.cloud",
+  grafana_token = Sys.getenv("GRAFANA_TOKEN"),
+  start_time = end_time - 30,
+  end_time = Sys.Date(),
+  namespace = "workshop",
+  exclude_pattern = NULL,
+  by_user = FALSE,
+  step = "24h0m0s"
+) {
+  # Compute the duration in seconds between start and end. This becomes the
+  # range vector lookback passed to max_over_time(), ensuring we capture
+  # directories that existed at any point in the window, including deleted ones.
+  duration_secs <- as.integer(
+    difftime(
+      lubridate::as_datetime(end_time, tz = "UTC"),
+      lubridate::as_datetime(start_time, tz = "UTC"),
+      units = "secs"
+    )
+  )
+  if (is.na(duration_secs) || duration_secs <= 0) {
+    cli::cli_abort("{.arg start_time} must be earlier than {.arg end_time}.")
+  }
+  # Build PromQL label selectors
+  selectors <- if (!is.null(namespace)) {
+    paste0('namespace="', namespace, '"')
+  } else {
+    'namespace=~".*"'
+  }
+  if (!is.null(exclude_pattern)) {
+    selectors <- paste0(selectors, ', directory!~"', exclude_pattern, '"')
+  }
+
+  if (by_user) {
+    step_secs <- parse_step_to_seconds(step)
+
+    # max(...) by (namespace, directory) collapses any extra label dimensions
+    # (e.g. node/instance) so each directory appears exactly once.
+    dir_query <- glue_promql(
+      'max(
+        max_over_time(
+          dirsize_total_size_bytes{<selectors>}[<duration_secs>s]
+        )
+      ) by (namespace, directory)'
+    )
+
+    raw_dirs <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = dir_query,
+      time = end_time
+    )
+
+    if (length(raw_dirs$data$result) == 0) {
+      return(
+        data.frame(
+          namespace = character(),
+          directory = character(),
+          first_seen = as.Date(character()),
+          last_seen = as.Date(character()),
+          start_time = as.Date(character()),
+          end_time = as.Date(character())
+        )
+      )
+    }
+
+    # PromQL subqueries: evaluate timestamp() at every step_secs over the full
+    # window, then take min/max. Gives the first/last scrape at which each
+    # directory was observed — a proxy for creation and deletion time.
+    seen_query <- '<when>(
+        <when>_over_time(
+          timestamp(
+            dirsize_total_size_bytes{<selectors>}
+          )[<duration_secs>s:<step_secs>s]
+        )
+      ) by (namespace, directory)'
+
+    raw_first <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = glue_promql(seen_query, when = "min"),
+      time = end_time
+    )
+
+    raw_last <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = glue_promql(seen_query, when = "max"),
+      time = end_time
+    )
+
+    dirs <- format_prom_result(
+      raw_dirs,
+      value_name = "dirsize_mb",
+      value_fn = \(x) as.numeric(x) * 1e-6
+    )
+
+    first_seen <- format_prom_result(
+      raw_first,
+      "first_seen",
+      value_fn = prom_date
+    )
+
+    last_seen <- format_prom_result(
+      raw_last,
+      "last_seen",
+      value_fn = prom_date
+    )
+
+    # Join on sanitized names so keys are stable, then unsanitize afterwards.
+    join_cols <- c("namespace", "directory")
+
+    dirs |>
+      dplyr::left_join(
+        dplyr::select(first_seen, "namespace", "directory", "first_seen"),
+        by = join_cols
+      ) |>
+      dplyr::left_join(
+        dplyr::select(last_seen, "namespace", "directory", "last_seen"),
+        by = join_cols
+      ) |>
+      dplyr::mutate(
+        directory = unsanitize_dir_names(.data$directory),
+        first_seen = as.Date(.data$first_seen),
+        last_seen = as.Date(.data$last_seen),
+        start_time = as.Date(start_time),
+        end_time = as.Date(end_time)
+      ) |>
+      dplyr::select(
+        "namespace",
+        "directory",
+        "first_seen",
+        "last_seen",
+        "start_time",
+        "end_time"
+      ) |>
+      dplyr::distinct()
+  } else {
+    # The intermediate max(...) by (namespace, directory) collapses extra label
+    # dimensions before count(), ensuring we count distinct directories only.
+    query <- glue_promql(
+      'count(
+        max(
+          max_over_time(
+            dirsize_total_size_bytes{<selectors>}[<duration_secs>s]
+          )
+        ) by (namespace, directory)
+      ) by (namespace)'
+    )
+
+    raw <- query_prometheus_instant(
+      grafana_url = grafana_url,
+      grafana_token = grafana_token,
+      query = query,
+      time = end_time
+    )
+
+    if (length(raw$data$result) == 0) {
+      return(
+        data.frame(
+          namespace = character(),
+          n_users = integer(),
+          start_time = as.Date(character()),
+          end_time = as.Date(character())
+        )
+      )
+    }
+
+    format_prom_result(raw, value_name = "n_users", value_fn = as.integer) |>
+      dplyr::mutate(
+        start_time = as.Date(start_time),
+        end_time = as.Date(end_time)
+      ) |>
+      dplyr::select("namespace", "n_users", "start_time", "end_time")
+  }
+}
+
 #' Query directory sizes over time from Grafana
 #'
 #' @param by_user A logical value indicating whether to group by user (directory). Default FALSE
@@ -284,16 +497,14 @@ user_cpu_requests <- function(
 }
 
 resource_requests_query <- function(resource) {
-  glue::glue(
+  glue_promql(
     'sum(
   kube_pod_container_resource_requests{resource="<resource>", pod=~"jupyter-.*"}
   * on(node) group_left(label_beta_kubernetes_io_instance_type)
   kube_node_labels
 ) by (namespace, pod, label_beta_kubernetes_io_instance_type, node)
 * on(namespace, pod) group_left(image_id)
-kube_pod_container_info{namespace=~".*", pod=~"jupyter-.*"}',
-    .open = "<",
-    .close = ">"
+kube_pod_container_info{namespace=~".*", pod=~"jupyter-.*"}'
   )
 }
 

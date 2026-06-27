@@ -14,5 +14,5 @@ A character vector with special characters restored from their sanitized form.
 }
 \description{
 Where directory names have had special characters replaced through url-encoding,
-revert them back to their unescaped forms
+revert them back to their unescaped forms.
 }

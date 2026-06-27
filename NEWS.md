@@ -1,3 +1,10 @@
+# jupycost 0.1.1
+
+## New Features
+
+* Added `get_workshop_users()` to count distinct user home directories that
+  existed in a hub namespace over a given time period.
+
 # jupycost 0.1.0
 
 ## New Features

@@ -1,6 +1,6 @@
 Package: jupycost
 Title: Monitor costs and usage of AWS-hosted 2i2c JupyterHubs
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(
     person("Andy", "Teucher", , "andy.teucher@gmail.com", role = c("aut", "cre"), 
            comment = c(ORCID = "0000-0002-7840-692X")),
@@ -12,7 +12,6 @@ Description: Functions to query the AWS Cost Explorer API and Prometheus to
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 URL: https://github.com/Openscapes/jupycost
 BugReports: https://github.com/Openscapes/jupycost/issues
 Depends:
@@ -33,3 +32,4 @@ Suggests:
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
