@@ -209,6 +209,104 @@ ce_filter_attributable_costs <- function(
   )
 }
 
+ce_filter_usage <- function() {
+  list(
+    Dimensions = list(
+      Key = "RECORD_TYPE",
+      Values = list("Usage")
+    )
+  )
+}
+
+ce_filter_hub <- function(
+  hub = c("all", "prod", "staging", "workshop", "support")
+) {
+  hub <- match.arg(hub)
+
+  if (hub == "all") {
+    return(NULL)
+  }
+
+  if (hub == "support") {
+    return(list(
+      Tags = list(
+        Key = "2i2c:hub-name",
+        MatchOptions = list("ABSENT")
+      )
+    ))
+  }
+
+  list(
+    Tags = list(
+      Key = "2i2c:hub-name",
+      Values = list(hub),
+      MatchOptions = list("EQUALS")
+    )
+  )
+}
+
+ce_filter_ec2_other <- function() {
+  list(
+    Dimensions = list(
+      Key = "SERVICE",
+      Values = list("EC2 - Other")
+    )
+  )
+}
+
+# EBS volumes (and their snapshots) backing jupyterhub-home-nfs.
+# ref: https://github.com/2i2c-org/jupyterhub-cost-monitoring/blob/main/src/jupyterhub_cost_monitoring/aws.py
+ce_filter_home_storage <- function() {
+  list(
+    Tags = list(
+      Key = "2i2c:volume-purpose",
+      Values = list("home-nfs"),
+      MatchOptions = list("EQUALS")
+    )
+  )
+}
+
+# Fixed cluster infrastructure within "EC2 - Other": core node volumes, the
+# NAT gateway, hub database volumes, and support (Prometheus, Grafana,
+# Alertmanager) volumes. Must be combined with ce_filter_ec2_other().
+# ref: `core_costs_filter` in https://github.com/2i2c-org/jupyterhub-cost-monitoring/blob/main/src/jupyterhub_cost_monitoring/aws.py
+ce_filter_fixed_ec2_other <- function() {
+  list(
+    Or = list(
+      list(
+        Tags = list(
+          Key = "2i2c:node-purpose",
+          Values = list("core"),
+          MatchOptions = list("EQUALS")
+        )
+      ),
+      list(
+        Dimensions = list(
+          Key = "USAGE_TYPE_GROUP",
+          Values = list(
+            "EC2: NAT Gateway - Running Hours",
+            "EC2: NAT Gateway - Data Processed"
+          )
+        )
+      ),
+      list(
+        Tags = list(
+          Key = "kubernetes.io/created-for/pvc/name",
+          Values = list("hub-db-dir"),
+          MatchOptions = list("EQUALS")
+        )
+      ),
+      list(
+        Tags = list(
+          Key = "kubernetes.io/created-for/pvc/namespace",
+          Values = list("support"),
+          MatchOptions = list("EQUALS")
+        )
+      )
+    )
+  )
+}
+
 #' Get the names of the hubs from AWS Cost Explorer
 #'
 #' @param start_date A date or date-like object that can be coerced to a string.
