@@ -7,15 +7,32 @@
 get_daily_usage_costs(
   end_date = Sys.Date(),
   months_back = 6,
+  start_date = NULL,
   cost_type = c("unblended", "blended", "all"),
   hub = c("all", "prod", "staging", "workshop", "support"),
   cluster = c("openscapeshub", "nmfs-openscapes")
 )
 }
 \arguments{
-\item{end_date}{A Date object representing the end of the desired date range.}
+\item{end_date}{A Date object (or string in a standard unambiguous date
+format) representing the end of the desired date range. \strong{Exclusive}:
+costs on \code{end_date} itself are not returned, matching the AWS Cost
+Explorer API. To include costs up to and including a given day, use the
+following day. The default, \code{Sys.Date()}, therefore excludes today's
+(incomplete) costs.}
 
-\item{months_back}{Optional. A single integer specifying how many months back to query.}
+\item{months_back}{Optional. A single integer specifying how many months
+back to query. The query starts on the first day of the month
+\code{months_back} months before \code{end_date}. Cannot be combined with
+\code{start_date}.}
+
+\item{start_date}{Optional. A Date object (or string in a standard
+unambiguous date format) representing the first day of the desired date
+range. \strong{Inclusive}: costs on \code{start_date} are returned. Use this to
+query a range that doesn't start on the first day of a month. If
+supplied, \code{months_back} must not be. Because \code{end_date} is exclusive,
+consecutive periods can be queried by using one period's \code{end_date} as
+the next period's \code{start_date}.}
 
 \item{cost_type}{The type of costs. "unblended" (default), "blended", or "all"}
 
@@ -28,4 +45,32 @@ A data frame of AWS usage costs.
 }
 \description{
 Get daily AWS usage costs
+}
+\details{
+Costs are assigned to a \code{service_component} based on the AWS service,
+except for the \code{"EC2 - Other"} service, which is split using the cost
+allocation tags applied by 2i2c:
+\itemize{
+\item \code{"home storage"}: EBS volumes and snapshots tagged
+\verb{2i2c:volume-purpose = home-nfs} (the \code{jupyterhub-home-nfs} home
+directory volumes).
+\item \code{"fixed"}: core node volumes, the NAT gateway, hub database volumes, and
+support component (Prometheus, Grafana, Alertmanager) volumes.
+\item \code{"compute"}: the remainder, mostly user node root volumes, plus any
+untagged snapshots or data transfer.
+}
+
+A split \code{"EC2 - Other"} cost therefore appears as up to three rows with the
+same \code{service}, so totals by \code{service} are unchanged.
+}
+\examples{
+\dontrun{
+# Costs for a reporting period of Sep 22 to Oct 21, 2026 inclusive. The
+# following period would start on 2026-10-22.
+get_daily_usage_costs(start_date = "2026-09-22", end_date = "2026-10-22")
+
+# Costs for the full calendar months of June to September 2026
+get_daily_usage_costs(end_date = "2026-10-01", months_back = 4)
+}
+
 }
