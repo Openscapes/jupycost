@@ -22,20 +22,18 @@
 #' @param cluster which cluster ("openscapeshub" or "nmfs-openscapes") you want information for. Ensure that you are authenticated to the correct AWS account using the appropriate API keys.
 #'
 #' @details
-#' Costs are assigned to a `service_component` based on the AWS service,
-#' except for the `"EC2 - Other"` service, which is split using the cost
-#' allocation tags applied by 2i2c:
+#' Costs are assigned to a `service_component` based on the AWS service, following 2i2c's cost
+#' categories:
 #'
 #' * `"home storage"`: EBS volumes and snapshots tagged
 #'   `2i2c:volume-purpose = home-nfs` (the `jupyterhub-home-nfs` home
 #'   directory volumes).
-#' * `"fixed"`: core node volumes, the NAT gateway, hub database volumes, and
+#' * `"core"`: core node costs (instance hours and volumes tagged
+#'   `2i2c:node-purpose = core`), the NAT gateway, hub database volumes, and
 #'   support component (Prometheus, Grafana, Alertmanager) volumes.
-#' * `"compute"`: the remainder, mostly user node root volumes, plus any
-#'   untagged snapshots or data transfer.
+#' * `"compute"`: the remainder, mostly user node instance hours and root
+#'   volumes, plus any untagged snapshots or data transfer.
 #'
-#' A split `"EC2 - Other"` cost therefore appears as up to three rows with the
-#' same `service`, so totals by `service` are unchanged.
 #'
 #' @returns
 #' A data frame of AWS usage costs.
@@ -83,9 +81,19 @@ get_daily_usage_costs <- function(
       )
     }
     start_date <- check_valid_date(start_date)
-    if (start_date >= end_date) {
-      cli::cli_abort("{.arg start_date} must be before {.arg end_date}.")
-    }
+  }
+
+  if (start_date >= end_date) {
+    cli::cli_abort(
+      "The resolved {.arg start_date} ({start_date}) must be before {.arg end_date} ({end_date})."
+    )
+  }
+
+  # Daily Cost Explorer data only goes back about 13 months
+  if (start_date < lubridate::add_with_rollback(end_date, -months(13))) {
+    cli::cli_abort(
+      "The resolved {.arg start_date} ({start_date}) is more than 13 months before {.arg end_date} ({end_date}). Daily Cost Explorer data is not available that far back."
+    )
   }
 
   base_filters <- list(ce_filter_usage(), ce_filter_attributable_costs(cluster))
@@ -100,7 +108,7 @@ get_daily_usage_costs <- function(
       format(end_date, "%Y-%m-%d"),
       filter = list(And = c(base_filters, list(...)))
     )
-    if (cost_type != "all" && NROW(out) > 0) {
+    if (cost_type != "all") {
       out <- dplyr::filter(out, .data$id == cost_type)
     }
     out
@@ -112,37 +120,57 @@ get_daily_usage_costs <- function(
   daily_ce$service_component <- unname(ce_service_map()[daily_ce$service])
   daily_ce$service_component[is.na(daily_ce$service_component)] <- "other"
 
-  if (!"EC2 - Other" %in% daily_ce$service) {
+  split_ec2_other <- "EC2 - Other" %in% daily_ce$service
+  split_core_compute <- "Amazon Elastic Compute Cloud - Compute" %in%
+    daily_ce$service
+
+  if (!split_ec2_other && !split_core_compute) {
     return(daily_ce)
   }
 
-  home_storage <- query_billing(ce_filter_ec2_other(), ce_filter_home_storage())
+  parts <- list()
+  core_parts <- list()
 
-  # Exclude home storage so the two subsets of EC2 - Other can't overlap
-  fixed <- query_billing(
-    ce_filter_ec2_other(),
-    list(Not = ce_filter_home_storage()),
-    ce_filter_fixed_ec2_other()
-  )
+  if (split_ec2_other) {
+    parts[["home storage"]] <- query_billing(
+      ce_filter_ec2_other(),
+      ce_filter_home_storage()
+    )
 
-  split_ec2_other(
-    daily_ce,
-    list("home storage" = home_storage, "fixed" = fixed)
-  )
+    # Exclude home storage so the two subsets of EC2 - Other can't overlap
+    core_parts[["ec2_other"]] <- query_billing(
+      ce_filter_ec2_other(),
+      list(Not = ce_filter_home_storage()),
+      ce_filter_core_ec2_other()
+    )
+  }
+
+  if (split_core_compute) {
+    core_parts[["ec2_compute"]] <- query_billing(
+      ce_filter_ec2_compute(),
+      ce_filter_core_node()
+    )
+  }
+
+  parts[["core"]] <- dplyr::bind_rows(core_parts)
+
+  split_service_components(daily_ce, parts)
 }
 
-#' Split "EC2 - Other" costs into service components
+#' Split service costs into service components
 #'
 #' @param daily_ce Data frame of daily costs with a `service_component` column.
 #' @param parts Named list of billing data frames (as returned by
-#'   `sixtyfour::aws_billing()`), each a subset of "EC2 - Other" costs. Names
-#'   are used as the `service_component` for those costs.
+#'   `sixtyfour::aws_billing()`), each a tagged subset of the costs of one of
+#'   the services in `daily_ce`. Names are used as the `service_component` for
+#'   those costs.
 #'
-#' @returns `daily_ce` with each "EC2 - Other" row replaced by one row per
-#'   component in `parts`, plus a `"compute"` row holding the remainder.
+#' @returns `daily_ce` with each row of an affected service replaced by one row
+#'   per component in `parts`, plus a remainder row keeping the original
+#'   `service_component`.
 #'
 #' @noRd
-split_ec2_other <- function(daily_ce, parts) {
+split_service_components <- function(daily_ce, parts) {
   keys <- c("id", "date", "linked_account")
   out_cols <- names(daily_ce)
 
@@ -152,45 +180,45 @@ split_ec2_other <- function(daily_ce, parts) {
   }
 
   part_costs <- dplyr::bind_rows(parts, .id = "service_component") |>
-    dplyr::filter(.data$service == "EC2 - Other") |>
     dplyr::mutate(date = lubridate::ymd(.data$date)) |>
     dplyr::group_by(dplyr::across(dplyr::all_of(c(
+      "service",
       keys,
       "service_component"
     )))) |>
     dplyr::summarise(part_cost = sum(.data$cost), .groups = "drop")
 
   daily_ce$.row <- seq_len(nrow(daily_ce))
-  is_ec2_other <- daily_ce$service == "EC2 - Other"
-  ec2_other <- daily_ce[is_ec2_other, ]
+  is_split <- daily_ce$service %in% unique(part_costs$service)
+  to_split <- daily_ce[is_split, ]
 
-  split_rows <- ec2_other |>
+  split_rows <- to_split |>
     dplyr::select(-"cost", -"service_component") |>
-    dplyr::inner_join(part_costs, by = keys) |>
+    dplyr::inner_join(part_costs, by = c("service", keys)) |>
     dplyr::rename(cost = "part_cost")
 
   part_totals <- part_costs |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(keys))) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c("service", keys)))) |>
     dplyr::summarise(parts_total = sum(.data$part_cost), .groups = "drop")
 
-  remainder_rows <- ec2_other |>
-    dplyr::left_join(part_totals, by = keys) |>
+  remainder_rows <- to_split |>
+    dplyr::left_join(part_totals, by = c("service", keys)) |>
     dplyr::mutate(
-      cost = .data$cost - dplyr::coalesce(.data$parts_total, 0),
-      service_component = "compute"
+      cost = .data$cost - dplyr::coalesce(.data$parts_total, 0)
     ) |>
     dplyr::select(-"parts_total")
 
   if (any(remainder_rows$cost < -0.01)) {
     cli::cli_warn(c(
-      "Tagged {.val EC2 - Other} costs exceed the {.val EC2 - Other} total on some days.",
-      "i" = "The {.val compute} component of {.val EC2 - Other} contains negative values."
+      "Tagged costs exceed the total for their service on some days.",
+      "i" = "The remainder {.val compute} component contains negative values.",
+      "i" = "This can happen when Cost Explorer revises estimated costs for recent days between the queries in one call."
     ))
   }
 
   component_order <- c("compute", names(parts))
 
-  dplyr::bind_rows(daily_ce[!is_ec2_other, ], remainder_rows, split_rows) |>
+  dplyr::bind_rows(daily_ce[!is_split, ], remainder_rows, split_rows) |>
     dplyr::arrange(
       .data$.row,
       match(.data$service_component, component_order)
