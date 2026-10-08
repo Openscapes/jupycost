@@ -47,21 +47,18 @@ A data frame of AWS usage costs.
 Get daily AWS usage costs
 }
 \details{
-Costs are assigned to a \code{service_component} based on the AWS service,
-except for the \code{"EC2 - Other"} service, which is split using the cost
-allocation tags applied by 2i2c:
+Costs are assigned to a \code{service_component} based on the AWS service, following 2i2c's cost
+categories:
 \itemize{
 \item \code{"home storage"}: EBS volumes and snapshots tagged
 \verb{2i2c:volume-purpose = home-nfs} (the \code{jupyterhub-home-nfs} home
 directory volumes).
-\item \code{"fixed"}: core node volumes, the NAT gateway, hub database volumes, and
+\item \code{"core"}: core node costs (instance hours and volumes tagged
+\verb{2i2c:node-purpose = core}), the NAT gateway, hub database volumes, and
 support component (Prometheus, Grafana, Alertmanager) volumes.
-\item \code{"compute"}: the remainder, mostly user node root volumes, plus any
-untagged snapshots or data transfer.
+\item \code{"compute"}: the remainder, mostly user node instance hours and root
+volumes, plus any untagged snapshots or data transfer.
 }
-
-A split \code{"EC2 - Other"} cost therefore appears as up to three rows with the
-same \code{service}, so totals by \code{service} are unchanged.
 }
 \examples{
 \dontrun{
