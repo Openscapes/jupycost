@@ -1,5 +1,5 @@
 Package: jupycost
-Title: Monitor costs and usage of AWS-hosted 2i2c JupyterHubs
+Title: Monitor Costs and Usage of AWS-Hosted 2i2c JupyterHubs
 Version: 0.1.0
 Authors@R: c(
     person("Andy", "Teucher", , "andy.teucher@gmail.com", role = c("aut", "cre"), 
