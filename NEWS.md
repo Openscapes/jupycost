@@ -1,5 +1,6 @@
 # jupycost (development version)
 
+- New `get_credits_used()` returns the AWS credits applied per month, from Cost Explorer.
 - `get_daily_usage_costs()` gains a `start_date` argument.
 - The `"fixed"` `service_component` (Amazon EKS and tagged `"EC2 - Other"` costs) is renamed `"core"` to match 2i2c's cost categories.
   It now also includes core node instance hours, which were previously classed as `"compute"`.
