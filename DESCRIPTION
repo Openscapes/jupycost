@@ -26,10 +26,8 @@ Imports:
     paws.security.identity,
     purrr,
     rlang,
-    sixtyfour,
+    sixtyfour (>= 0.2.4),
     tidyr
-Remotes:
-    getwilds/sixtyfour
 Suggests: 
     testthat (>= 3.0.0),
     withr
