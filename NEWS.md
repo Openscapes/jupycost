@@ -1,5 +1,6 @@
 # jupycost (development version)
 
+- New `get_credits_remaining()` returns the balance of each AWS credit, from the Billing API.
 - New `get_credits_used()` returns the AWS credits applied per month, from Cost Explorer.
 - `get_daily_usage_costs()` gains a `start_date` argument.
 - The `"fixed"` `service_component` (Amazon EKS and tagged `"EC2 - Other"` costs) is renamed `"core"` to match 2i2c's cost categories.
