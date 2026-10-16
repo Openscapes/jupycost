@@ -103,15 +103,12 @@ get_daily_usage_costs <- function(
   }
 
   query_billing <- function(...) {
-    out <- sixtyfour::aws_billing(
+    aws_billing_daily(
       format(start_date, "%Y-%m-%d"),
       format(end_date, "%Y-%m-%d"),
-      filter = list(And = c(base_filters, list(...)))
+      filter = list(And = c(base_filters, list(...))),
+      cost_type = cost_type
     )
-    if (cost_type != "all") {
-      out <- dplyr::filter(out, .data$id == cost_type)
-    }
-    out
   }
 
   daily_ce <- query_billing() |>

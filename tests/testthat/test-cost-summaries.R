@@ -50,8 +50,7 @@ test_that("get_daily_usage_costs returns expected format", {
   )
 
   local_mocked_bindings(
-    "aws_billing" = function(...) mock_data,
-    .package = "sixtyfour"
+    aws_billing_daily = function(...) mock_data
   )
 
   result <- get_daily_usage_costs(
@@ -63,27 +62,24 @@ test_that("get_daily_usage_costs returns expected format", {
   expect_true(inherits(result$date, "Date"))
 })
 
-test_that("get_daily_usage_costs filters by cost_type correctly", {
-  mock_data <- data.frame(
-    id = c("unblended", "blended"),
-    date = as.Date("2023-01-01"),
-    service = "foo",
-    linked_account = "123",
-    cost = c(10, 20)
-  )
-
+test_that("get_daily_usage_costs passes cost_type to the billing query", {
+  types <- character()
   local_mocked_bindings(
-    "aws_billing" = function(...) mock_data,
-    .package = "sixtyfour"
+    aws_billing_daily = function(date_start, date_end, filter, cost_type) {
+      types <<- c(types, cost_type)
+      data.frame(
+        id = "unblended",
+        date = as.Date("2023-01-01"),
+        service = "foo",
+        linked_account = "123",
+        cost = 10
+      )
+    }
   )
 
-  unblended_result <- get_daily_usage_costs(cost_type = "unblended")
-  expect_equal(nrow(unblended_result), 1)
-  expect_equal(unblended_result$id, "unblended")
-
-  all_result <- get_daily_usage_costs(cost_type = "all")
-  expect_equal(nrow(all_result), 2)
-  expect_equal(all_result$id, c("unblended", "blended"))
+  get_daily_usage_costs(cost_type = "blended")
+  get_daily_usage_costs(cost_type = "all")
+  expect_equal(types, c("blended", "all"))
 })
 
 test_that("get_daily_usage_costs() works for real with nasa env vars", {
@@ -130,7 +126,7 @@ test_that("get_daily_usage_costs() works for real with nmfs env vars", {
 
 test_that("get_daily_usage_costs correctly combines cluster and hub filters", {
   filter_capture <- NULL
-  mock_fn <- function(start_date, end_date, filter) {
+  mock_fn <- function(date_start, date_end, filter, cost_type) {
     filter_capture <<- filter
     data.frame(
       id = "unblended",
@@ -142,8 +138,7 @@ test_that("get_daily_usage_costs correctly combines cluster and hub filters", {
   }
 
   local_mocked_bindings(
-    "aws_billing" = mock_fn,
-    .package = "sixtyfour"
+    aws_billing_daily = mock_fn
   )
 
   # Test that cluster filter and hub filter are both applied
@@ -157,7 +152,7 @@ test_that("get_daily_usage_costs correctly combines cluster and hub filters", {
 
 test_that("get_daily_usage_costs filter structure is correct for support hub", {
   filter_capture <- NULL
-  mock_fn <- function(start_date, end_date, filter) {
+  mock_fn <- function(date_start, date_end, filter, cost_type) {
     filter_capture <<- filter
     data.frame(
       id = "unblended",
@@ -169,8 +164,7 @@ test_that("get_daily_usage_costs filter structure is correct for support hub", {
   }
 
   local_mocked_bindings(
-    "aws_billing" = mock_fn,
-    .package = "sixtyfour"
+    aws_billing_daily = mock_fn
   )
 
   # Test shared hub uses ABSENT match option
@@ -181,7 +175,7 @@ test_that("get_daily_usage_costs filter structure is correct for support hub", {
 
 test_that("get_daily_usage_costs cluster filter includes all required tag keys", {
   filter_capture <- NULL
-  mock_fn <- function(start_date, end_date, filter) {
+  mock_fn <- function(date_start, date_end, filter, cost_type) {
     filter_capture <<- filter
     data.frame(
       id = "unblended",
@@ -193,8 +187,7 @@ test_that("get_daily_usage_costs cluster filter includes all required tag keys",
   }
 
   local_mocked_bindings(
-    "aws_billing" = mock_fn,
-    .package = "sixtyfour"
+    aws_billing_daily = mock_fn
   )
 
   # Test openscapes cluster
@@ -228,10 +221,9 @@ test_that("get_daily_usage_costs service_component mapping handles all known ser
 
   # Tagged sub-queries add filters beyond the two base ones; return nothing
   local_mocked_bindings(
-    "aws_billing" = function(start_date, end_date, filter) {
+    aws_billing_daily = function(date_start, date_end, filter, cost_type) {
       if (length(filter$And) > 2) mock_data[0, ] else mock_data
-    },
-    .package = "sixtyfour"
+    }
   )
 
   result <- get_daily_usage_costs()
@@ -284,8 +276,7 @@ test_that("get_daily_usage_costs service_component defaults to 'other' for unmap
   )
 
   local_mocked_bindings(
-    "aws_billing" = function(...) mock_data,
-    .package = "sixtyfour"
+    aws_billing_daily = function(...) mock_data
   )
 
   result <- get_daily_usage_costs()
@@ -304,8 +295,7 @@ test_that("get_daily_usage_costs includes service_component column in output", {
   )
 
   local_mocked_bindings(
-    "aws_billing" = function(...) mock_data,
-    .package = "sixtyfour"
+    aws_billing_daily = function(...) mock_data
   )
 
   result <- get_daily_usage_costs()
@@ -317,8 +307,8 @@ test_that("get_daily_usage_costs includes service_component column in output", {
 test_that("get_daily_usage_costs passes start_date and end_date to the API", {
   dates <- NULL
   local_mocked_bindings(
-    "aws_billing" = function(start_date, end_date, filter) {
-      dates <<- c(start_date, end_date)
+    aws_billing_daily = function(date_start, date_end, filter, cost_type) {
+      dates <<- c(date_start, date_end)
       data.frame(
         id = "unblended",
         date = "2024-01-01",
@@ -326,8 +316,7 @@ test_that("get_daily_usage_costs passes start_date and end_date to the API", {
         linked_account = "123",
         cost = 10
       )
-    },
-    .package = "sixtyfour"
+    }
   )
 
   get_daily_usage_costs(start_date = "2024-05-22", end_date = "2024-06-22")
@@ -337,8 +326,8 @@ test_that("get_daily_usage_costs passes start_date and end_date to the API", {
 test_that("get_daily_usage_costs starts months_back months before end_date at the start of the month", {
   dates <- NULL
   local_mocked_bindings(
-    "aws_billing" = function(start_date, end_date, filter) {
-      dates <<- c(start_date, end_date)
+    aws_billing_daily = function(date_start, date_end, filter, cost_type) {
+      dates <<- c(date_start, date_end)
       data.frame(
         id = "unblended",
         date = "2024-01-01",
@@ -346,8 +335,7 @@ test_that("get_daily_usage_costs starts months_back months before end_date at th
         linked_account = "123",
         cost = 10
       )
-    },
-    .package = "sixtyfour"
+    }
   )
 
   get_daily_usage_costs(end_date = "2024-06-15", months_back = 2)
@@ -366,7 +354,7 @@ test_that("get_daily_usage_costs splits EC2 costs into components", {
   }
   # Base query has 2 filters; home storage adds 2; core adds a Not clause
   local_mocked_bindings(
-    "aws_billing" = function(start_date, end_date, filter) {
+    aws_billing_daily = function(date_start, date_end, filter, cost_type) {
       has_not <- any(purrr::map_lgl(filter$And, \(x) "Not" %in% names(x)))
       if (has_not) {
         billing(3)
@@ -375,8 +363,7 @@ test_that("get_daily_usage_costs splits EC2 costs into components", {
       } else {
         billing(10)
       }
-    },
-    .package = "sixtyfour"
+    }
   )
 
   result <- get_daily_usage_costs()
