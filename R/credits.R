@@ -101,7 +101,7 @@ get_credits_remaining <- function(months_back = 12) {
         as.numeric(credit[[field]])
       }
     })
-    as.POSIXct(secs, tz = "UTC")
+    as.POSIXct(secs, origin = "1970-01-01", tz = "UTC")
   }
 
   credits <- billing_credits_raw(start_date)$credits
