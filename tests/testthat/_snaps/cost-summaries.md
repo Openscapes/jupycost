@@ -25,6 +25,22 @@
 ---
 
     Code
+      get_daily_usage_costs(start_date = "2024-01-01", months_back = 2)
+    Condition
+      Error in `get_daily_usage_costs()`:
+      ! Supply only one of `start_date` or `months_back`.
+
+---
+
+    Code
+      get_daily_usage_costs(start_date = "2024-06-01", end_date = "2024-05-01")
+    Condition
+      Error in `get_daily_usage_costs()`:
+      ! The resolved `start_date` (2024-06-01) must be before `end_date` (2024-05-01).
+
+---
+
+    Code
       get_daily_usage_costs(cost_type = "invalid")
     Condition
       Error in `match.arg()`:
@@ -51,18 +67,35 @@
     Code
       filter_str
     Output
-      [1] "list(And = list(list(Dimensions = list(Key = \"RECORD_TYPE\", Values = list("
-      [2] "    \"Usage\"))), list(Tags = list(Key = \"2i2c:hub-name\", Values = list("  
-      [3] "    \"prod\"), MatchOptions = list(\"EQUALS\")))))"                          
+       [1] "list(And = list(list(Dimensions = list(Key = \"RECORD_TYPE\", Values = list("              
+       [2] "    \"Usage\"))), list(Or = list(list(Tags = list(Key = \"alpha.eksctl.io/cluster-name\", "
+       [3] "    Values = list(\"nmfs-openscapes\"), MatchOptions = list(\"EQUALS\"))), "               
+       [4] "    list(Tags = list(Key = \"kubernetes.io/cluster/nmfs-openscapes\", "                    
+       [5] "        Values = list(\"owned\"), MatchOptions = list(\"EQUALS\"))), "                     
+       [6] "    list(Tags = list(Key = \"2i2c.org/cluster-name\", Values = list("                      
+       [7] "        \"nmfs-openscapes\"), MatchOptions = list(\"EQUALS\"))), "                         
+       [8] "    list(Not = list(Tags = list(Key = \"2i2c:hub-name\", MatchOptions = list("             
+       [9] "        \"ABSENT\")))), list(Not = list(Tags = list(Key = \"2i2c:node-purpose\", "         
+      [10] "        MatchOptions = list(\"ABSENT\")))))), list(Tags = list("                           
+      [11] "    Key = \"2i2c:hub-name\", Values = list(\"prod\"), MatchOptions = list("                
+      [12] "        \"EQUALS\")))))"                                                                   
 
 # get_daily_usage_costs filter structure is correct for support hub
 
     Code
       deparse(filter_capture)
     Output
-      [1] "list(And = list(list(Dimensions = list(Key = \"RECORD_TYPE\", Values = list("    
-      [2] "    \"Usage\"))), list(Tags = list(Key = \"2i2c:hub-name\", MatchOptions = list("
-      [3] "    \"ABSENT\")))))"                                                             
+       [1] "list(And = list(list(Dimensions = list(Key = \"RECORD_TYPE\", Values = list("              
+       [2] "    \"Usage\"))), list(Or = list(list(Tags = list(Key = \"alpha.eksctl.io/cluster-name\", "
+       [3] "    Values = list(\"openscapeshub\"), MatchOptions = list(\"EQUALS\"))), "                 
+       [4] "    list(Tags = list(Key = \"kubernetes.io/cluster/openscapeshub\", "                      
+       [5] "        Values = list(\"owned\"), MatchOptions = list(\"EQUALS\"))), "                     
+       [6] "    list(Tags = list(Key = \"2i2c.org/cluster-name\", Values = list("                      
+       [7] "        \"openscapeshub\"), MatchOptions = list(\"EQUALS\"))), list("                      
+       [8] "        Not = list(Tags = list(Key = \"2i2c:hub-name\", MatchOptions = list("              
+       [9] "            \"ABSENT\")))), list(Not = list(Tags = list(Key = \"2i2c:node-purpose\", "     
+      [10] "        MatchOptions = list(\"ABSENT\")))))), list(Tags = list("                           
+      [11] "    Key = \"2i2c:hub-name\", MatchOptions = list(\"ABSENT\")))))"                          
 
 # get_daily_usage_costs cluster filter includes all required tag keys
 
@@ -95,4 +128,14 @@
        [8] "    list(Not = list(Tags = list(Key = \"2i2c:hub-name\", MatchOptions = list("             
        [9] "        \"ABSENT\")))), list(Not = list(Tags = list(Key = \"2i2c:node-purpose\", "         
       [10] "        MatchOptions = list(\"ABSENT\"))))))))"                                            
+
+# split_service_components warns when tagged costs exceed the total
+
+    Code
+      invisible(split_service_components(daily_ce, parts))
+    Condition
+      Warning:
+      Tagged costs exceed the total for their service on some days.
+      i The remainder "compute" component contains negative values.
+      i This can happen when Cost Explorer revises estimated costs for recent days between the queries in one call.
 

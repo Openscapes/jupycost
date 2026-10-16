@@ -22,5 +22,7 @@ export(user_cpu_usage)
 export(user_dir_snapshot)
 export(user_mem_requests)
 export(user_mem_usage)
-importFrom(rlang,":=")
-importFrom(rlang,.data)
+importFrom(rlang,
+  ":=",
+  .data
+)
