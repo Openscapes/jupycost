@@ -1,3 +1,5 @@
+# jupycost (development version)
+
 # jupycost 0.2.0
 
 - New `get_credits_remaining()` returns the balance of each AWS credit, from the Billing API.
