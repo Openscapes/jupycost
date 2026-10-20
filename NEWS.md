@@ -1,4 +1,4 @@
-# jupycost (development version)
+# jupycost 0.2.1
 
 - Newly exported `set_env_vars()` copies `NASA_` or `NMFS_` prefixed credentials environment variables to the unprefixed names that jupycost functions read.
 
