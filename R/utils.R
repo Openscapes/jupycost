@@ -44,19 +44,40 @@ check_valid_date <- function(
   date
 }
 
-#' Set environment variables for testing
+#' Set the credentials environment variables for one hub
 #'
-#' This is kind of a remake of withr::local_envvar() but gets the env var values
-#' from the prefixed versions of the vars.
+#' Openscapes runs two hubs, NASA and NMFS, each with its own Grafana instance
+#' and AWS account. jupycost functions read credentials from the
+#' environment variables `GRAFANA_TOKEN`, `AWS_ACCESS_KEY_ID`,
+#' `AWS_SECRET_ACCESS_KEY` and `AWS_REGION`. `set_env_vars()` sets these from existing credentials
+#' saved under prefixed names (for example
+#' `NASA_GRAFANA_TOKEN` and `NMFS_GRAFANA_TOKEN`, in your `.Renviron`) and
+#' copies the set for one hub to the unprefixed names.
 #'
-#' @param org One of `"nasa"` or `"nmfs"`.
-#' @param env The environment in which to restore the original environment variables.
+#' `AWS_REGION` is always set to `"us-east-1"`.
+#'
+#' The original values of the unprefixed variables are restored when `env`
+#' finishes, using [withr::defer()]. Called from a function or from
+#' `test_that()`, that is when the function or test exits. Called from the
+#' console, nothing is restored automatically; run [withr::deferred_run()] to
+#' restore them.
+#'
+#' @param org The hub whose credentials to use, one of `"nasa"` or `"nmfs"`.
+#' @param env The environment in which to restore the original environment
+#'   variables.
 #'
 #' @returns
-#' `TRUE` for each environment variables successfully set and are not-empty.
-#' Otherwise, `FALSE`. Environment variables are automatically restored to
-#' their original values when the environment is cleaned up.
-#' @noRd
+#' Invisibly, a named logical vector with an element for each of the four
+#' environment variables. It is `TRUE` if the variable was set to a non-empty
+#' value, and `FALSE` otherwise (for example, if the prefixed variable is not
+#' defined). A warning is also given if any variable could not be set.
+#'
+#' @export
+#' @examples
+#' \dontrun{
+#' set_env_vars("nmfs")
+#' get_daily_usage_costs(cluster = "nmfs-openscapes")
+#' }
 set_env_vars <- function(org = c("nasa", "nmfs"), env = parent.frame()) {
   org <- match.arg(org)
 
@@ -94,7 +115,7 @@ set_env_vars <- function(org = c("nasa", "nmfs"), env = parent.frame()) {
 
   empty_vars <- !nzchar(Sys.getenv(names(env_vars)))
 
-  stats::setNames(were_vars_set & !empty_vars, names(env_vars))
+  invisible(stats::setNames(were_vars_set & !empty_vars, names(env_vars)))
 }
 
 

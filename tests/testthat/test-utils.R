@@ -52,3 +52,46 @@ test_that("time_string errors on invalid inputs", {
   expect_snapshot(error = TRUE, time_string(NA))
   expect_snapshot(error = TRUE, time_string(42))
 })
+
+test_that("set_env_vars() copies prefixed variables and restores them", {
+  withr::local_envvar(
+    NMFS_GRAFANA_TOKEN = "token",
+    NMFS_AWS_ACCESS_KEY_ID = "id",
+    NMFS_AWS_SECRET_ACCESS_KEY = "secret",
+    GRAFANA_TOKEN = "original"
+  )
+
+  local({
+    res <- set_env_vars("nmfs")
+    expect_all_true(res)
+    expect_equal(
+      Sys.getenv(c("GRAFANA_TOKEN", "AWS_ACCESS_KEY_ID", "AWS_REGION")),
+      c(
+        GRAFANA_TOKEN = "token",
+        AWS_ACCESS_KEY_ID = "id",
+        AWS_REGION = "us-east-1"
+      )
+    )
+  })
+
+  expect_equal(Sys.getenv("GRAFANA_TOKEN"), "original")
+})
+
+test_that("set_env_vars() reports variables that are empty", {
+  withr::local_envvar(
+    NASA_GRAFANA_TOKEN = "token",
+    NASA_AWS_ACCESS_KEY_ID = "id",
+    NASA_AWS_SECRET_ACCESS_KEY = ""
+  )
+
+  res <- set_env_vars("nasa")
+  expect_equal(
+    res,
+    c(
+      GRAFANA_TOKEN = TRUE,
+      AWS_ACCESS_KEY_ID = TRUE,
+      AWS_SECRET_ACCESS_KEY = FALSE,
+      AWS_REGION = TRUE
+    )
+  )
+})

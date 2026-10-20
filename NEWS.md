@@ -1,5 +1,7 @@
 # jupycost (development version)
 
+- Newly exported `set_env_vars()` copies `NASA_` or `NMFS_` prefixed credentials environment variables to the unprefixed names that jupycost functions read.
+
 # jupycost 0.2.0
 
 - New `get_credits_remaining()` returns the balance of each AWS credit, from the Billing API.

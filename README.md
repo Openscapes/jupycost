@@ -27,6 +27,93 @@ You can install the development version of jupycost from
 pak::pak("Openscapes/jupycost")
 ```
 
-## Example
+## Authentication
 
-This is a basic example which shows you how to solve a common problem:
+Openscapes runs two hubs, each with its own Grafana instance and AWS
+account:
+
+| Hub | `cluster` | Grafana URL |
+|----|----|----|
+| NASA | `"openscapeshub"` | <https://grafana.openscapes.2i2c.cloud> (the default `grafana_url`) |
+| NMFS | `"nmfs-openscapes"` | <https://grafana.nmfs-openscapes.2i2c.cloud> |
+
+jupycost reads credentials for the hub you are working with from these
+environment variables:
+
+- `GRAFANA_TOKEN`, used by the Prometheus usage functions.
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_REGION`
+  (`us-east-1`), used by the cost and credit functions.
+
+Cost functions don’t take a credential argument, so they report on
+whichever AWS account the variables point to. Make sure they match the
+`cluster` you ask for. Prometheus functions use the token for the
+Grafana instance in `grafana_url`, so pass `grafana_url` explicitly for
+NMFS.
+
+### Getting the credentials
+
+**Grafana token**
+
+1.  Log in to the hub’s Grafana instance (see the table above) as an
+    admin.
+2.  Go to *Administration \> Users and access \> Service accounts*.
+3.  Create a service account (the Viewer role is enough), then choose
+    *Add service account token*.
+4.  Copy the token right away, as it is only shown once.
+
+**AWS credentials**
+
+1.  In the hub’s AWS account, open *IAM* and create (or select) a user
+    that can use Cost Explorer. The credit functions additionally call
+    the AWS Billing credits API and look up the account ID through STS.
+2.  On the *Security credentials* tab, choose *Create access key*.
+3.  Copy the access key ID and secret access key.
+
+### Saving the environment variables
+
+Store the variables in your user-level `.Renviron` file so that R loads
+them at startup and they stay out of the project. Open the file with:
+
+``` r
+usethis::edit_r_environ()
+```
+
+Because there are two hubs, the simplest approach is to save both sets
+with a prefix, which is also what the package test infrastructure
+expects:
+
+``` sh
+NASA_GRAFANA_TOKEN=<token>
+NASA_AWS_ACCESS_KEY_ID=<key-id>
+NASA_AWS_SECRET_ACCESS_KEY=<secret>
+NMFS_GRAFANA_TOKEN=<token>
+NMFS_AWS_ACCESS_KEY_ID=<key-id>
+NMFS_AWS_SECRET_ACCESS_KEY=<secret>
+```
+
+Save the file and restart R. Then, to work with one hub, use
+`set_env_vars()` to copy its variables to the unprefixed names the
+functions read (and set `AWS_REGION`):
+
+``` r
+library(jupycost)
+
+set_env_vars("nmfs")
+get_daily_usage_costs(cluster = "nmfs-openscapes")
+```
+
+In a function or a test, the original values are restored when it exits.
+At the console, run `withr::deferred_run()` to restore them, or call
+`set_env_vars()` again for the other hub.
+
+If you only work with one hub, you can instead save the unprefixed names
+directly.
+
+### Tests and CI
+
+Tests that hit Grafana or AWS use `set_env_vars()` to read the prefixed
+variables and are skipped when they are missing, so you can run the test
+suite without credentials. On GitHub Actions the same variables are
+provided from repository secrets of the same names (for example
+`NASA_GRAFANA_TOKEN`), which is also where to put them for any automated
+reporting. Never commit credential values to version control.
