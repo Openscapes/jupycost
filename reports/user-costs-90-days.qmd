@@ -1,0 +1,116 @@
+---
+title: "User costs over the last 90 days"
+subtitle: "NASA Openscapes hub"
+date: today
+format:
+  html:
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+---
+
+```{r}
+#| label: setup
+devtools::load_all(here::here(), quiet = TRUE)
+library(ggplot2)
+
+set_env_vars("nasa")
+
+end_date <- Sys.Date()
+start_date <- end_date - 90
+
+daily <- get_daily_user_costs(start_date = start_date, end_date = end_date)
+
+per_component <- daily |>
+  dplyr::summarise(cost = sum(cost), .by = c(user, component)) |>
+  tidyr::complete(
+    user,
+    component = c("compute", "home storage"),
+    fill = list(cost = 0)
+  )
+
+per_user <- per_component |>
+  dplyr::summarise(cost = sum(cost), .by = user) |>
+  dplyr::mutate(component = "total") |>
+  dplyr::bind_rows(per_component) |>
+  dplyr::mutate(
+    component = factor(
+      component,
+      levels = c("compute", "home storage", "total"),
+      labels = c("Compute", "Home storage", "Overall")
+    )
+  )
+
+with_cost <- dplyr::filter(per_user, cost > 0)
+
+dollar <- scales::label_dollar(accuracy = 0.01)
+hubs <- sort(unique(daily$hub))
+```
+
+Per-user compute and home storage costs on the `{r} knitr::combine_words(hubs)`
+hubs, `{r} format(start_date, "%B %e")` to `{r} format(end_date - 1, "%B %e, %Y")`.
+Shared costs (core nodes, networking, object storage) are not included.
+
+## Summary
+
+```{r}
+#| label: tbl-summary
+#| tbl-cap: "Cost per user over 90 days. Statistics are over users with a cost greater than zero for that component."
+with_cost |>
+  dplyr::summarise(
+    Users = dplyr::n(),
+    Total = sum(cost),
+    Min = min(cost),
+    Median = stats::median(cost),
+    Mean = mean(cost),
+    Max = max(cost),
+    .by = component
+  ) |>
+  dplyr::arrange(component) |>
+  dplyr::mutate(dplyr::across(Total:Max, dollar)) |>
+  dplyr::rename(Component = component) |>
+  knitr::kable(align = "lrrrrrr")
+```
+
+## Distribution
+
+```{r}
+#| label: fig-distribution
+#| fig-cap: "Cost per user over 90 days. Each dot is one user."
+#| fig-alt: "Three strips of dots, one each for compute, home storage and overall, showing each user's 90-day cost on a log scale from under one cent to several hundred dollars. Most users cost under a few dollars, and a small number of users, mostly in compute, cost tens to hundreds of dollars."
+#| fig-height: 4
+#| fig-width: 8
+plot_data <- dplyr::mutate(
+  with_cost,
+  component = factor(component, levels = rev(levels(component)))
+)
+
+ggplot(plot_data, aes(x = cost, y = component)) +
+  geom_point(
+    position = position_jitter(height = 0.2, width = 0, seed = 1),
+    size = 1.6,
+    alpha = 0.5,
+    colour = "#2a6fdb"
+  ) +
+  scale_x_log10(labels = scales::label_dollar(accuracy = 0.01)) +
+  labs(x = "Cost per user (USD, log scale)", y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+## Highest-cost users
+
+```{r}
+#| label: tbl-top-users
+#| tbl-cap: "The 10 users with the highest total cost over 90 days."
+per_user |>
+  tidyr::pivot_wider(names_from = component, values_from = cost) |>
+  dplyr::slice_max(Overall, n = 10) |>
+  dplyr::mutate(dplyr::across(-user, dollar)) |>
+  dplyr::rename(User = user) |>
+  knitr::kable(align = "lrrr")
+```

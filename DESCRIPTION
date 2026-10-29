@@ -1,6 +1,6 @@
 Package: jupycost
 Title: Monitor Costs and Usage of AWS-Hosted 2i2c JupyterHubs
-Version: 0.2.1
+Version: 0.2.1.9000
 Authors@R: c(
     person("Andy", "Teucher", , "andy.teucher@gmail.com", role = c("aut", "cre"), 
            comment = c(ORCID = "0000-0002-7840-692X")),
@@ -32,4 +32,4 @@ Imports:
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1

@@ -20,12 +20,12 @@ defined). A warning is also given if any variable could not be set.
 }
 \description{
 Openscapes runs two hubs, NASA and NMFS, each with its own Grafana instance
-and AWS account. jupycost functions read credentials from the unprefixed
-environment variables \code{GRAFANA_TOKEN}, \code{AWS_ACCESS_KEY_ID},
-\code{AWS_SECRET_ACCESS_KEY} and \code{AWS_REGION}. \code{set_env_vars()} lets you keep both
-sets of credentials saved under prefixed names (for example
-\code{NASA_GRAFANA_TOKEN} and \code{NMFS_GRAFANA_TOKEN}, in your \code{.Renviron}) and
-copies the set for one hub to the unprefixed names.
+and AWS account. jupycost functions read credentials from the environment
+variables \code{GRAFANA_TOKEN}, \code{AWS_ACCESS_KEY_ID}, \code{AWS_SECRET_ACCESS_KEY} and
+\code{AWS_REGION}. \code{set_env_vars()} sets these from existing credentials saved
+under prefixed names (for example \code{NASA_GRAFANA_TOKEN} and
+\code{NMFS_GRAFANA_TOKEN}, in your \code{.Renviron}) and copies the set for one hub to
+the unprefixed names.
 }
 \details{
 \code{AWS_REGION} is always set to \code{"us-east-1"}.

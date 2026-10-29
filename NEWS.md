@@ -1,3 +1,7 @@
+# jupycost (development version)
+
+- New `get_daily_user_costs()` returns daily costs per user, hub and component (compute and home storage) from 2i2c's cost monitoring service, the data behind the "User cloud costs" Grafana dashboard.
+
 # jupycost 0.2.1
 
 - Newly exported `set_env_vars()` copies `NASA_` or `NMFS_` prefixed credentials environment variables to the unprefixed names that jupycost functions read.

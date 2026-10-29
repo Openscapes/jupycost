@@ -132,8 +132,12 @@ test_that("user_dir_snapshot works with mocked responses", {
     req_perform = function(...) structure(list(), class = "httr2_response"),
     resp_body_json = function(...) {
       parent <- parent.frame()
-      if (grepl("mtime", parent$query)) return(mock_date_response)
-      if (grepl("size_bytes", parent$query)) return(mock_size_response)
+      if (grepl("mtime", parent$query)) {
+        return(mock_date_response)
+      }
+      if (grepl("size_bytes", parent$query)) {
+        return(mock_size_response)
+      }
       if (grepl("entries_count", parent$query)) return(mock_files_response)
     },
     resp_check_status = function(x) x,
@@ -141,7 +145,7 @@ test_that("user_dir_snapshot works with mocked responses", {
   )
 
   local_mocked_bindings(
-    get_default_prometheus_uid = function(...) "foo"
+    get_grafana_datasource_uid = function(...) "foo"
   )
 
   result <- user_dir_snapshot(time = as.POSIXct("2024-01-01"))
@@ -215,7 +219,7 @@ test_that("dir_sizes() works with by_user = TRUE", {
   )
 
   local_mocked_bindings(
-    get_default_prometheus_uid = function(...) "foo"
+    get_grafana_datasource_uid = function(...) "foo"
   )
 
   result <- dir_sizes(
@@ -254,7 +258,7 @@ test_that("dir_sizes() works with by_user = FALSE", {
   )
 
   local_mocked_bindings(
-    get_default_prometheus_uid = function(...) "foo"
+    get_grafana_datasource_uid = function(...) "foo"
   )
 
   result <- dir_sizes(

@@ -1,16 +1,36 @@
-test_that("get_default_prometheus_uid works", {
+test_that("get_grafana_datasource_uid works", {
   mock_response <- list(
-    list(name = "other", uid = "123"),
-    list(name = "prometheus", uid = "abc", isDefault = FALSE)
+    list(name = "cloudwatch", type = "cloudwatch", uid = "123"),
+    list(name = "prometheus", type = "prometheus", uid = "abc"),
+    list(
+      name = "yesoreyeram-infinity-datasource",
+      type = "yesoreyeram-infinity-datasource",
+      uid = "def"
+    )
   )
 
   local_mocked_bindings(
     req_perform = function(...) structure(list(), class = "httr2_response"),
+    resp_check_status = function(x) x,
     resp_body_json = function(...) mock_response,
     .package = "httr2"
   )
 
-  expect_equal(get_default_prometheus_uid(), "abc")
+  expect_equal(
+    get_grafana_datasource_uid("https://grafana.example", "", "prometheus"),
+    "abc"
+  )
+  expect_equal(
+    get_grafana_datasource_uid(
+      "https://grafana.example",
+      "",
+      "yesoreyeram-infinity-datasource"
+    ),
+    "def"
+  )
+  expect_snapshot(error = TRUE, {
+    get_grafana_datasource_uid("https://grafana.example", "", "loki")
+  })
 })
 
 test_that("get_prometheus_labels works", {
@@ -24,7 +44,7 @@ test_that("get_prometheus_labels works", {
   )
 
   local_mocked_bindings(
-    get_default_prometheus_uid = function(...) "foo"
+    get_grafana_datasource_uid = function(...) "foo"
   )
 
   expect_equal(get_prometheus_labels(), mock_response$data)
@@ -49,7 +69,7 @@ test_that("get_prometheus_metrics works", {
   )
 
   local_mocked_bindings(
-    get_default_prometheus_uid = function(...) "foo"
+    get_grafana_datasource_uid = function(...) "foo"
   )
 
   result <- get_prometheus_metrics()

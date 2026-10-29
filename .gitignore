@@ -6,3 +6,5 @@
 .quarto
 
 /.quarto/
+reports/*.html
+reports/*_files/
