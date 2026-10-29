@@ -4,7 +4,7 @@
 \name{jupycost-package}
 \alias{jupycost}
 \alias{jupycost-package}
-\title{jupycost: Monitor costs and usage of AWS-hosted 2i2c JupyterHubs}
+\title{jupycost: Monitor Costs and Usage of AWS-Hosted 2i2c JupyterHubs}
 \description{
 Functions to query the AWS Cost Explorer API and Prometheus to monitor resource usage and costs in AWS-hosted JupyterHubs administered by 2i2c (\url{https://2i2c.org}).
 }
