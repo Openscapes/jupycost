@@ -182,8 +182,14 @@ get_daily_user_costs <- function(
   }
 
   out |>
-    dplyr::select(-"usergroup") |>
-    dplyr::distinct()
+    dplyr::distinct(
+      .data$date,
+      .data$hub,
+      .data$user,
+      .data$component,
+      .keep_all = TRUE
+    ) |>
+    dplyr::select(-"usergroup")
 }
 
 date_chunks <- function(start_date, end_date, max_days) {

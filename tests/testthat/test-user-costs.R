@@ -19,6 +19,17 @@ test_that("get_daily_user_costs() returns one row per user unless by_usergroup =
   expect_equal(dplyr::distinct(by_group[names(expected)]), expected)
 })
 
+test_that("get_daily_user_costs() keeps one row per user even if group values differ", {
+  costs <- user_costs_fixture()
+  costs$value[2] <- 1.4999
+  local_mock_cost_monitoring(costs)
+
+  res <- get_daily_user_costs("2026-10-01", "2026-10-02")
+
+  expect_equal(res$user, c("alice", "bob"))
+  expect_equal(res$cost, c(1.5, 0.25))
+})
+
 test_that("get_daily_user_costs() queries each hub except support when hub = 'all'", {
   costs <- user_costs_fixture()
   costs$hub[4] <- "workshop"
