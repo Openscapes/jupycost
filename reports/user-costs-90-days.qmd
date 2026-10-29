@@ -22,15 +22,18 @@ start_date <- end_date - 90
 
 daily <- get_daily_user_costs(start_date = start_date, end_date = end_date)
 
-per_user <- daily |>
+per_component <- daily |>
   dplyr::summarise(cost = sum(cost), .by = c(user, component)) |>
-  tidyr::pivot_wider(
-    names_from = component,
-    values_from = cost,
-    values_fill = 0
-  ) |>
-  dplyr::mutate(total = compute + `home storage`) |>
-  tidyr::pivot_longer(-user, names_to = "component", values_to = "cost") |>
+  tidyr::complete(
+    user,
+    component = c("compute", "home storage"),
+    fill = list(cost = 0)
+  )
+
+per_user <- per_component |>
+  dplyr::summarise(cost = sum(cost), .by = user) |>
+  dplyr::mutate(component = "total") |>
+  dplyr::bind_rows(per_component) |>
   dplyr::mutate(
     component = factor(
       component,

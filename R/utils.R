@@ -47,12 +47,12 @@ check_valid_date <- function(
 #' Set the credentials environment variables for one hub
 #'
 #' Openscapes runs two hubs, NASA and NMFS, each with its own Grafana instance
-#' and AWS account. jupycost functions read credentials from the
-#' environment variables `GRAFANA_TOKEN`, `AWS_ACCESS_KEY_ID`,
-#' `AWS_SECRET_ACCESS_KEY` and `AWS_REGION`. `set_env_vars()` sets these from existing credentials
-#' saved under prefixed names (for example
-#' `NASA_GRAFANA_TOKEN` and `NMFS_GRAFANA_TOKEN`, in your `.Renviron`) and
-#' copies the set for one hub to the unprefixed names.
+#' and AWS account. jupycost functions read credentials from the environment
+#' variables `GRAFANA_TOKEN`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and
+#' `AWS_REGION`. `set_env_vars()` sets these from existing credentials saved
+#' under prefixed names (for example `NASA_GRAFANA_TOKEN` and
+#' `NMFS_GRAFANA_TOKEN`, in your `.Renviron`) and copies the set for one hub to
+#' the unprefixed names.
 #'
 #' `AWS_REGION` is always set to `"us-east-1"`.
 #'

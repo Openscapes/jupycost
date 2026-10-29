@@ -16,8 +16,19 @@ local_mock_cost_monitoring <- function(
 ) {
   calls <- new.env()
   calls$queries <- list()
+  calls$uid_lookups <- 0
   local_mocked_bindings(
-    cost_monitoring_get = function(grafana_url, grafana_token, path, query) {
+    get_grafana_datasource_uid = function(...) {
+      calls$uid_lookups <- calls$uid_lookups + 1
+      "foo"
+    },
+    cost_monitoring_get = function(
+      grafana_url,
+      grafana_token,
+      uid,
+      path,
+      query
+    ) {
       if (path == "hub-names") {
         return(hubs)
       }

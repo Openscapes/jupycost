@@ -76,6 +76,7 @@ test_that("get_daily_user_costs() splits long date ranges into chunks", {
       "2026-03-04 2026-03-14"
     )
   )
+  expect_equal(calls$uid_lookups, 1)
 })
 
 test_that("get_daily_user_costs() handles an empty response", {

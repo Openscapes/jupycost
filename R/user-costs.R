@@ -79,6 +79,7 @@ get_daily_user_costs <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN")
 ) {
+  # end_date must be converted before the start_date default is evaluated
   end_date <- check_valid_date(end_date)
   start_date <- check_valid_date(start_date)
   component <- rlang::arg_match(component)
@@ -99,6 +100,12 @@ get_daily_user_costs <- function(
     )
   }
 
+  uid <- get_grafana_datasource_uid(
+    grafana_url,
+    grafana_token,
+    type = "yesoreyeram-infinity-datasource"
+  )
+
   query <- list(
     from = format(start_date, "%Y-%m-%d"),
     # The cost monitoring service treats `to` as inclusive
@@ -114,9 +121,11 @@ get_daily_user_costs <- function(
     hubs <- cost_monitoring_get(
       grafana_url,
       grafana_token,
+      uid,
       "hub-names",
       query[c("from", "to")]
     )
+    # 2i2c's infrastructure hubs, which have no users
     hubs <- setdiff(unlist(hubs), c("support", "binder"))
   } else {
     hubs <- hub
@@ -137,6 +146,7 @@ get_daily_user_costs <- function(
         list(cost_monitoring_get(
           grafana_url,
           grafana_token,
+          uid,
           "costs-per-user",
           c(chunk_query, hub = h)
         ))
@@ -181,13 +191,7 @@ date_chunks <- function(start_date, end_date, max_days) {
   data.frame(start = starts, end = c(starts[-1], end_date))
 }
 
-cost_monitoring_get <- function(grafana_url, grafana_token, path, query) {
-  uid <- get_grafana_datasource_uid(
-    grafana_url,
-    grafana_token,
-    type = "yesoreyeram-infinity-datasource"
-  )
-
+cost_monitoring_get <- function(grafana_url, grafana_token, uid, path, query) {
   httr2::request(grafana_url) |>
     httr2::req_options(http_version = 2) |>
     httr2::req_url_path("/api/datasources/proxy/uid", uid, path) |>
