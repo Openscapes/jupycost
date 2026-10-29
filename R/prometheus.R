@@ -1,27 +1,20 @@
-#' Get the default Prometheus UID from Grafana
-#'
-#' @param grafana_url url to a Grafana instance. Default
-#'        `"https://grafana.openscapes.2i2c.cloud"`
-#' @param grafana_token Your Grafana API token.
-#'
-#' @returns A string containing the UID of the Prometheus datasource.
-#'
-#' @noRd
-get_default_prometheus_uid <- function(
-  grafana_url = "https://grafana.openscapes.2i2c.cloud",
-  grafana_token = Sys.getenv("GRAFANA_TOKEN")
-) {
-  api_url <- glue::glue("{grafana_url}/")
-
-  res <- httr2::request(grafana_url) |>
+get_grafana_datasource_uid <- function(grafana_url, grafana_token, type) {
+  body <- httr2::request(grafana_url) |>
     httr2::req_url_path("/api/datasources/") |>
     httr2::req_auth_bearer_token(grafana_token) |>
-    httr2::req_perform()
+    httr2::req_perform() |>
+    httr2::resp_check_status() |>
+    httr2::resp_body_json()
 
-  body <- httr2::resp_body_json(res)
+  ds <- Filter(\(x) identical(x$type, type), body)
 
-  # Could also check if isDefault, but there is only one and it is isDefault = FALSE
-  Filter(\(x) x$name == "prometheus", body)[[1]][["uid"]]
+  if (length(ds) == 0) {
+    cli::cli_abort(
+      "No Grafana datasource of type {.val {type}} found at {.url {grafana_url}}."
+    )
+  }
+
+  ds[[1]][["uid"]]
 }
 
 #  get_homedir_dashboard <- function(
@@ -48,7 +41,11 @@ get_prometheus_labels <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN")
 ) {
-  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
+  prometheus_uid <- get_grafana_datasource_uid(
+    grafana_url,
+    grafana_token,
+    type = "prometheus"
+  )
   resp <- httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
@@ -73,7 +70,11 @@ get_prometheus_metrics <- function(
   grafana_url = "https://grafana.openscapes.2i2c.cloud",
   grafana_token = Sys.getenv("GRAFANA_TOKEN")
 ) {
-  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
+  prometheus_uid <- get_grafana_datasource_uid(
+    grafana_url,
+    grafana_token,
+    type = "prometheus"
+  )
   resp <- httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
@@ -119,7 +120,11 @@ query_prometheus_instant <- function(
   query,
   time = Sys.time()
 ) {
-  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
+  prometheus_uid <- get_grafana_datasource_uid(
+    grafana_url,
+    grafana_token,
+    type = "prometheus"
+  )
   resp <- httr2::request(grafana_url) |>
     httr2::req_url_path(
       "/api/datasources/proxy/uid",
@@ -177,7 +182,11 @@ query_prometheus_range <- function(
   end_time = Sys.Date(),
   step = "1h0m0s"
 ) {
-  prometheus_uid <- get_default_prometheus_uid(grafana_url, grafana_token)
+  prometheus_uid <- get_grafana_datasource_uid(
+    grafana_url,
+    grafana_token,
+    type = "prometheus"
+  )
   req <- httr2::request(grafana_url) |>
     # Force HTTP version 2, I think there was a mismatch when not set and was
     # getting the error:

@@ -197,22 +197,3 @@ cost_monitoring_get <- function(grafana_url, grafana_token, path, query) {
     httr2::resp_check_status() |>
     httr2::resp_body_json(simplifyVector = TRUE)
 }
-
-get_grafana_datasource_uid <- function(grafana_url, grafana_token, type) {
-  body <- httr2::request(grafana_url) |>
-    httr2::req_url_path("/api/datasources/") |>
-    httr2::req_auth_bearer_token(grafana_token) |>
-    httr2::req_perform() |>
-    httr2::resp_check_status() |>
-    httr2::resp_body_json()
-
-  ds <- Filter(\(x) identical(x$type, type), body)
-
-  if (length(ds) == 0) {
-    cli::cli_abort(
-      "No Grafana datasource of type {.val {type}} found at {.url {grafana_url}}."
-    )
-  }
-
-  ds[[1]][["uid"]]
-}
